@@ -38,6 +38,36 @@ function extractJSON(text) {
   return cleaned.substring(startIdx, endIdx + 1);
 }
 
+// Validate Agent 2 generator output for concreteness
+function validateGeneratorConcreteness(remediations) {
+  const placeholderPatterns = /\[.*?\]|<.*?>|todo|tbd|fixme|placeholder|xxx/gi;
+
+  if (!remediations.remediations || !Array.isArray(remediations.remediations)) {
+    throw new Error('Agent 2 output missing remediations array');
+  }
+
+  remediations.remediations.forEach((fix, idx) => {
+    // Check for required concrete field (terraform generator uses proposed_fix)
+    if (!fix.proposed_fix) {
+      throw new Error(`Remediation ${idx}: missing proposed_fix field`);
+    }
+
+    const concreteField = fix.proposed_fix;
+
+    // Check for placeholder content
+    if (placeholderPatterns.test(concreteField)) {
+      throw new Error(`Remediation ${idx}: proposed_fix contains placeholder text: ${concreteField.substring(0, 100)}`);
+    }
+
+    // Must have actual content (not just "add something")
+    if (concreteField.length < 10) {
+      throw new Error(`Remediation ${idx}: proposed_fix too short or empty`);
+    }
+  });
+
+  return true;
+}
+
 async function runTerraformWorkflow(planContent, environment) {
   const audit = {
     workflow: 'terraform',
@@ -138,6 +168,14 @@ async function runTerraformWorkflow(planContent, environment) {
       agent2Remediations = JSON.parse(jsonStr2);
     } catch (err) {
       throw new Error(`Agent 2 output not valid JSON: ${err.message}. Response: ${agent2Response.text.substring(0, 500)}`);
+    }
+
+    // Validate Agent 2 output for concreteness (guardrails layer - warnings only)
+    try {
+      validateGeneratorConcreteness(agent2Remediations);
+    } catch (err) {
+      process.stdout.write(`    ⚠ Concreteness check: ${err.message}\n`);
+      // Warning only - don't fail, as prompts already enforce concreteness
     }
 
     audit.steps.push({

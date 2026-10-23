@@ -37,6 +37,34 @@ function extractJSON(text) {
   return cleaned.substring(startIdx, endIdx + 1);
 }
 
+// Validate Agent 2 generator output for concreteness (Kubernetes)
+function validateGeneratorConcreteness(fixes) {
+  const placeholderPatterns = /\[.*?\]|<.*?>|todo|tbd|fixme|placeholder|xxx/gi;
+
+  if (!fixes.fixes || !Array.isArray(fixes.fixes)) {
+    throw new Error('Agent 2 output missing fixes array');
+  }
+
+  fixes.fixes.forEach((fix, idx) => {
+    // Check for required concrete fields
+    if (!fix.concrete_yaml) {
+      throw new Error(`Fix ${idx}: missing concrete_yaml field`);
+    }
+
+    // Check for placeholder content
+    if (placeholderPatterns.test(fix.concrete_yaml)) {
+      throw new Error(`Fix ${idx}: concrete_yaml contains placeholder text`);
+    }
+
+    // Must have actual YAML-like content (apiVersion, kind, etc.)
+    if (fix.concrete_yaml.length < 30 || !fix.concrete_yaml.includes('apiVersion')) {
+      throw new Error(`Fix ${idx}: concrete_yaml too short or missing YAML markers`);
+    }
+  });
+
+  return true;
+}
+
 async function runKubernetesWorkflow(manifestContent, environment) {
   const audit = {
     workflow: 'kubernetes',
@@ -110,6 +138,14 @@ async function runKubernetesWorkflow(manifestContent, environment) {
       agent2Fixes = JSON.parse(jsonStr2);
     } catch (err) {
       throw new Error(`Agent 2 output not valid JSON: ${err.message}. Response: ${agent2Response.text.substring(0, 300)}`);
+    }
+
+    // Validate Agent 2 output for concreteness (guardrails layer - warnings only)
+    try {
+      validateGeneratorConcreteness(agent2Fixes);
+    } catch (err) {
+      process.stdout.write(`    ⚠ Concreteness check: ${err.message}\n`);
+      // Warning only - don't fail, as prompts already enforce concreteness
     }
 
     audit.steps.push({

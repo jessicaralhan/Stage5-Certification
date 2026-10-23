@@ -18,58 +18,27 @@ const WORKFLOWS = {
   iam: './workflow/iam-executor.js',
 };
 
-// Detect file type from extension and initial content
-function detectFileType(filePath, content) {
-  const ext = path.extname(filePath).toLowerCase();
+// No file type detection here — coordinator agent handles this independently
 
-  if (ext === '.tf') {
-    return { type: 'terraform', confidence: 'high', reason: 'File extension .tf' };
-  }
-
-  if (['.yaml', '.yml'].includes(ext)) {
-    return { type: 'kubernetes', confidence: 'high', reason: 'File extension .yaml/.yml' };
-  }
-
-  if (ext === '.json' && content.includes('"Version"') && content.includes('"Statement"')) {
-    return { type: 'iam', confidence: 'high', reason: 'JSON with IAM policy structure' };
-  }
-
-  // Content-based detection
-  if (content.includes('kind:') && content.includes('apiVersion:')) {
-    return { type: 'kubernetes', confidence: 'high', reason: 'Content has Kubernetes markers' };
-  }
-
-  if (content.includes('resource ') && content.includes('provider ')) {
-    return { type: 'terraform', confidence: 'high', reason: 'Content has Terraform markers' };
-  }
-
-  if (content.includes('"Action"') && content.includes('"Resource"')) {
-    return { type: 'iam', confidence: 'high', reason: 'Content has IAM policy markers' };
-  }
-
-  return { type: null, confidence: 'low', reason: 'Could not determine file type' };
-}
-
-// Call Coordinator Agent to confirm routing decision
-async function callCoordinator(filePath, content, environment, detectedType) {
+// Call Coordinator Agent to make independent routing decision
+async function callCoordinator(filePath, content, environment) {
   const coordinatorPrompt = fs.readFileSync(
     path.join(__dirname, '../prompts/coordinator-agent.md'),
     'utf-8'
   );
 
+  // Coordinator gets first 1500 chars of input — enough for analysis, not the entire file
+  const contentPreview = content.substring(0, 1500);
+
   const prompt = coordinatorPrompt
     .replace('{{input_file}}', path.basename(filePath))
     .replace('{{environment}}', environment)
-    .replace('{{suggested_workflow}}', detectedType.type || 'unknown');
-
-  // Coordinator gets first 1000 chars of input as context
-  const contentSnippet = content.substring(0, 1000);
-  const fullPrompt = `${prompt}\n\nInput content preview:\n\`\`\`\n${contentSnippet}\n\`\`\``;
+    .replace('{{input_content}}', contentPreview);
 
   const result = await callClaude({
-    user: fullPrompt,
+    user: prompt,
     model: 'claude-haiku-5-5',
-    maxTokens: 1000,
+    maxTokens: 500,
   });
 
   // Parse Coordinator's response
@@ -131,34 +100,30 @@ Examples:
     const content = fs.readFileSync(inputFile, 'utf-8');
     process.stdout.write(`[Step 1] Loaded input file (${content.length} bytes)\n`);
 
-    // Step 2: Detect file type
-    const detected = detectFileType(inputFile, content);
-    process.stdout.write(`[Step 2] File type detection: ${detected.type} (${detected.confidence})\n`);
-
-    if (!detected.type) {
-      process.stderr.write(`Error: Could not determine file type\n`);
-      process.exit(1);
-    }
-
-    // Step 3: Call Coordinator for routing confirmation
-    process.stdout.write(`[Step 3] Calling Coordinator for routing decision...\n`);
-    const coordinatorDecision = await callCoordinator(inputFile, content, environment, detected);
+    // Step 2: Call Coordinator for independent routing decision (no pre-detection hints)
+    process.stdout.write(`[Step 2] Calling Coordinator for routing decision...\n`);
+    const coordinatorDecision = await callCoordinator(inputFile, content, environment);
 
     if (!coordinatorDecision.decision) {
       throw new Error('Coordinator did not make a routing decision');
     }
 
-    process.stdout.write(`[Step 3] Coordinator decision: ${coordinatorDecision.decision} (${coordinatorDecision.confidence})\n`);
+    // Validate coordinator decision is one of the valid workflows
+    if (!['terraform', 'kubernetes', 'iam'].includes(coordinatorDecision.decision)) {
+      throw new Error(`Coordinator returned invalid workflow: ${coordinatorDecision.decision}`);
+    }
+
+    process.stdout.write(`[Step 2] Coordinator decision: ${coordinatorDecision.decision} (${coordinatorDecision.confidence})\n`);
     process.stdout.write(`         Reason: ${coordinatorDecision.reason}\n`);
 
-    // Step 4: Execute the chosen workflow
-    process.stdout.write(`[Step 4] Executing workflow...\n`);
+    // Step 3: Execute the chosen workflow
+    process.stdout.write(`[Step 3] Executing workflow...\n`);
     const workflowResult = await executeWorkflow(coordinatorDecision.decision, inputFile, environment);
 
-    process.stdout.write(`[Step 4] Workflow complete. Risk level: ${workflowResult.risk_level}\n`);
+    process.stdout.write(`[Step 3] Workflow complete. Risk level: ${workflowResult.risk_level}\n`);
 
-    // Step 5: Check escalation gates
-    process.stdout.write(`[Step 5] Checking escalation gates...\n`);
+    // Step 4: Check escalation gates
+    process.stdout.write(`[Step 4] Checking escalation gates...\n`);
 
     const workflowFindings = {};
     workflowFindings[coordinatorDecision.decision] = workflowResult;
@@ -175,8 +140,8 @@ Examples:
       });
     }
 
-    // Step 6: Generate report (using Report Writer agent)
-    process.stdout.write(`[Step 6] Generating unified report...\n`);
+    // Step 5: Generate report (using Report Writer agent)
+    process.stdout.write(`[Step 5] Generating unified report...\n`);
 
     let report;
     try {
@@ -186,8 +151,8 @@ Examples:
       report = fallbackReportGeneration(coordinatorDecision.decision, workflowResult);
     }
 
-    // Step 7: Determine final status
-    process.stdout.write(`[Step 7] Determining final status...\n`);
+    // Step 6: Determine final status
+    process.stdout.write(`[Step 6] Determining final status...\n`);
 
     let finalStatus = 'APPROVED';
     if (escalationInfo.shouldEscalate) {
@@ -197,8 +162,8 @@ Examples:
       process.stdout.write(`    ✓ Auto-approved (no escalation criteria met)\n`);
     }
 
-    // Step 8: Output results
-    process.stdout.write(`[Step 8] Writing results...\n`);
+    // Step 7: Output results
+    process.stdout.write(`[Step 7] Writing results...\n`);
 
     const resultsDir = path.join(__dirname, '../results');
     if (!fs.existsSync(resultsDir)) {
@@ -306,4 +271,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { detectFileType, callCoordinator, executeWorkflow };
+module.exports = { callCoordinator, executeWorkflow };

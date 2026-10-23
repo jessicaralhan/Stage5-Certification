@@ -37,6 +37,34 @@ function extractJSON(text) {
   return cleaned.substring(startIdx, endIdx + 1);
 }
 
+// Validate Agent 2 generator output for concreteness (IAM)
+function validateGeneratorConcreteness(fixes) {
+  const placeholderPatterns = /\[.*?\]|<.*?>|todo|tbd|fixme|placeholder|xxx/gi;
+
+  if (!fixes.fixes || !Array.isArray(fixes.fixes)) {
+    throw new Error('Agent 2 output missing fixes array');
+  }
+
+  fixes.fixes.forEach((fix, idx) => {
+    // Check for required concrete field
+    if (!fix.concrete_policy_change) {
+      throw new Error(`Fix ${idx}: missing concrete_policy_change field`);
+    }
+
+    // Check for placeholder content
+    if (placeholderPatterns.test(fix.concrete_policy_change)) {
+      throw new Error(`Fix ${idx}: concrete_policy_change contains placeholder text`);
+    }
+
+    // Must have actual policy content
+    if (fix.concrete_policy_change.length < 10) {
+      throw new Error(`Fix ${idx}: concrete_policy_change too short or empty`);
+    }
+  });
+
+  return true;
+}
+
 async function runIAMWorkflow(policyContent, environment) {
   const audit = {
     workflow: 'iam',
@@ -112,6 +140,14 @@ async function runIAMWorkflow(policyContent, environment) {
       agent2Fixes = JSON.parse(jsonStr2);
     } catch (err) {
       throw new Error(`Agent 2 output not valid JSON: ${err.message}. Response: ${agent2Response.text.substring(0, 300)}`);
+    }
+
+    // Validate Agent 2 output for concreteness (guardrails layer - warnings only)
+    try {
+      validateGeneratorConcreteness(agent2Fixes);
+    } catch (err) {
+      process.stdout.write(`    ⚠ Concreteness check: ${err.message}\n`);
+      // Warning only - don't fail, as prompts already enforce concreteness
     }
 
     audit.steps.push({
