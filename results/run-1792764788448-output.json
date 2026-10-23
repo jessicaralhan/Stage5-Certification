@@ -1,0 +1,236 @@
+{
+  "run_id": "1792764788448",
+  "coordinator_decision": "iam",
+  "workflow_executed": "iam",
+  "environment": "production",
+  "workflow_findings": {
+    "workflow": "iam",
+    "risk_level": "CRITICAL",
+    "access_issues": [
+      {
+        "type": "overly_broad_permissions",
+        "severity": "CRITICAL",
+        "affected_principals": [
+          "Unspecified principal attached to policy Sid AllowEverything"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "Statement AllowEverything grants Action \"*\" on Resource \"*\", giving full administrative control over every AWS service and resource in production."
+      },
+      {
+        "type": "missing_resource_boundaries",
+        "severity": "CRITICAL",
+        "affected_principals": [
+          "Unspecified principal attached to policy Sid AllowEverything"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "Resource is unscoped (\"*\"), so the statement reaches databases, KMS keys, security groups, and IAM itself with no ARN boundaries."
+      },
+      {
+        "type": "missing_mfa",
+        "severity": "CRITICAL",
+        "affected_principals": [
+          "Unspecified principal attached to policy Sid AllowEverything"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "The statement permits destructive and privilege-changing actions (create, delete, modify, IAM changes) with no aws:MultiFactorAuthPresent requirement."
+      },
+      {
+        "type": "missing_conditions",
+        "severity": "HIGH",
+        "affected_principals": [
+          "Unspecified principal attached to policy Sid AllowEverything"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "The statement has no Condition block (no source IP, time window, aws:SourceVpc, or request tag restrictions), so access is unrestricted by context."
+      },
+      {
+        "type": "session_ttl",
+        "severity": "MEDIUM",
+        "affected_principals": [
+          "Unspecified principal attached to policy Sid AllowEverything"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "The document defines no session policy or maximum session duration, so any credentials issued to this principal could remain valid for the default maximum of 12 hours."
+      }
+    ],
+    "summary": "The policy grants unrestricted administrative access to all actions and resources in production with no conditions, MFA, or session constraints, which is a critical exposure.",
+    "fixes": [
+      {
+        "issue": "Statement AllowEverything grants Action \"*\" on Resource \"*\" (overly broad permissions)",
+        "fix_type": "permission_narrowing",
+        "concrete_policy_change": "Replace {\"Sid\":\"AllowEverything\",\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"} with {\"Sid\":\"ProdAppOperations\",\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\",\"s3:ListBucket\",\"ec2:StartInstances\",\"ec2:StopInstances\",\"ec2:RebootInstances\",\"logs:CreateLogStream\",\"logs:PutLogEvents\",\"cloudwatch:GetMetricData\"],\"Resource\":[\"arn:aws:s3:::prod-app-data\",\"arn:aws:s3:::prod-app-data/*\",\"arn:aws:ec2:us-east-1:123456789012:instance/*\",\"arn:aws:logs:us-east-1:123456789012:log-group:/prod/app:*\",\"*\"]} plus {\"Sid\":\"ReadOnlyDescribe\",\"Effect\":\"Allow\",\"Action\":[\"ec2:DescribeInstances\",\"ec2:DescribeTags\"],\"Resource\":\"*\"}. Explicit IAM, KMS, and database actions are removed. Still possible: reading and writing app data, starting, stopping, and rebooting prod instances, writing logs, and reading metrics.",
+        "severity": "CRITICAL"
+      },
+      {
+        "issue": "Resource \"*\" reaches databases, KMS keys, security groups, and IAM with no ARN boundaries (missing resource boundaries)",
+        "fix_type": "resource_scoping",
+        "concrete_policy_change": "Replace \"Resource\":\"*\" in the operational statement with explicit ARNs: [\"arn:aws:s3:::prod-app-data\",\"arn:aws:s3:::prod-app-data/*\",\"arn:aws:ec2:us-east-1:123456789012:instance/i-0abc123def4567890\",\"arn:aws:logs:us-east-1:123456789012:log-group:/prod/app:*\"]. Add {\"Sid\":\"DenyOutOfScope\",\"Effect\":\"Deny\",\"NotAction\":[\"ec2:Describe*\",\"cloudwatch:GetMetricData\"],\"NotResource\":[\"arn:aws:s3:::prod-app-data\",\"arn:aws:s3:::prod-app-data/*\",\"arn:aws:ec2:us-east-1:123456789012:instance/i-0abc123def4567890\",\"arn:aws:logs:us-east-1:123456789012:log-group:/prod/app:*\"]}. Still possible: all app data and log operations on the named bucket, log group, and instance. Describe calls remain available because AWS requires Resource \"*\" for them.",
+        "severity": "CRITICAL"
+      },
+      {
+        "issue": "Destructive and privilege-changing actions permitted with no aws:MultiFactorAuthPresent requirement (missing MFA)",
+        "fix_type": "mfa_requirement",
+        "concrete_policy_change": "Add to the ProdAppOperations statement: \"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"},\"NumericLessThan\":{\"aws:MultiFactorAuthAge\":\"3600\"}}. Apply the same Condition to the DenyOutOfScope statement via a second Deny: {\"Sid\":\"DenyWithoutMFA\",\"Effect\":\"Deny\",\"Action\":\"*\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"aws:MultiFactorAuthPresent\":\"false\"}}}. Still possible: all listed operations for principals that authenticate with MFA within the last hour. Non-MFA sessions are denied.",
+        "severity": "CRITICAL"
+      }
+    ],
+    "verdict": "ESCALATE",
+    "audit_trail": {
+      "workflow": "iam",
+      "correlation_id": "1792764788448",
+      "timestamp_start": "2026-10-23T14:13:08.451Z",
+      "steps": [
+        {
+          "step": "agent1_iam_analyzer",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-23T14:13:15.139Z",
+          "correlation_id": "1792764788448",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1238,
+          "output_tokens": 1209,
+          "total_tokens": 2447,
+          "cost_usd": 0.0058264,
+          "findings": {
+            "access_issues": [
+              {
+                "type": "overly_broad_permissions",
+                "severity": "CRITICAL",
+                "affected_principals": [
+                  "Unspecified principal attached to policy Sid AllowEverything"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "Statement AllowEverything grants Action \"*\" on Resource \"*\", giving full administrative control over every AWS service and resource in production."
+              },
+              {
+                "type": "missing_resource_boundaries",
+                "severity": "CRITICAL",
+                "affected_principals": [
+                  "Unspecified principal attached to policy Sid AllowEverything"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "Resource is unscoped (\"*\"), so the statement reaches databases, KMS keys, security groups, and IAM itself with no ARN boundaries."
+              },
+              {
+                "type": "missing_mfa",
+                "severity": "CRITICAL",
+                "affected_principals": [
+                  "Unspecified principal attached to policy Sid AllowEverything"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "The statement permits destructive and privilege-changing actions (create, delete, modify, IAM changes) with no aws:MultiFactorAuthPresent requirement."
+              },
+              {
+                "type": "missing_conditions",
+                "severity": "HIGH",
+                "affected_principals": [
+                  "Unspecified principal attached to policy Sid AllowEverything"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "The statement has no Condition block (no source IP, time window, aws:SourceVpc, or request tag restrictions), so access is unrestricted by context."
+              },
+              {
+                "type": "session_ttl",
+                "severity": "MEDIUM",
+                "affected_principals": [
+                  "Unspecified principal attached to policy Sid AllowEverything"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "The document defines no session policy or maximum session duration, so any credentials issued to this principal could remain valid for the default maximum of 12 hours."
+              }
+            ],
+            "summary": "The policy grants unrestricted administrative access to all actions and resources in production with no conditions, MFA, or session constraints, which is a critical exposure.",
+            "risk_level": "CRITICAL"
+          }
+        },
+        {
+          "step": "agent2_iam_generator",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-23T14:13:27.553Z",
+          "correlation_id": "1792764788448",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1805,
+          "output_tokens": 2716,
+          "total_tokens": 4521,
+          "cost_usd": 0.012308,
+          "fixes": {
+            "fixes": [
+              {
+                "issue": "Statement AllowEverything grants Action \"*\" on Resource \"*\" (overly broad permissions)",
+                "fix_type": "permission_narrowing",
+                "concrete_policy_change": "Replace {\"Sid\":\"AllowEverything\",\"Effect\":\"Allow\",\"Action\":\"*\",\"Resource\":\"*\"} with {\"Sid\":\"ProdAppOperations\",\"Effect\":\"Allow\",\"Action\":[\"s3:GetObject\",\"s3:PutObject\",\"s3:ListBucket\",\"ec2:StartInstances\",\"ec2:StopInstances\",\"ec2:RebootInstances\",\"logs:CreateLogStream\",\"logs:PutLogEvents\",\"cloudwatch:GetMetricData\"],\"Resource\":[\"arn:aws:s3:::prod-app-data\",\"arn:aws:s3:::prod-app-data/*\",\"arn:aws:ec2:us-east-1:123456789012:instance/*\",\"arn:aws:logs:us-east-1:123456789012:log-group:/prod/app:*\",\"*\"]} plus {\"Sid\":\"ReadOnlyDescribe\",\"Effect\":\"Allow\",\"Action\":[\"ec2:DescribeInstances\",\"ec2:DescribeTags\"],\"Resource\":\"*\"}. Explicit IAM, KMS, and database actions are removed. Still possible: reading and writing app data, starting, stopping, and rebooting prod instances, writing logs, and reading metrics.",
+                "severity": "CRITICAL"
+              },
+              {
+                "issue": "Resource \"*\" reaches databases, KMS keys, security groups, and IAM with no ARN boundaries (missing resource boundaries)",
+                "fix_type": "resource_scoping",
+                "concrete_policy_change": "Replace \"Resource\":\"*\" in the operational statement with explicit ARNs: [\"arn:aws:s3:::prod-app-data\",\"arn:aws:s3:::prod-app-data/*\",\"arn:aws:ec2:us-east-1:123456789012:instance/i-0abc123def4567890\",\"arn:aws:logs:us-east-1:123456789012:log-group:/prod/app:*\"]. Add {\"Sid\":\"DenyOutOfScope\",\"Effect\":\"Deny\",\"NotAction\":[\"ec2:Describe*\",\"cloudwatch:GetMetricData\"],\"NotResource\":[\"arn:aws:s3:::prod-app-data\",\"arn:aws:s3:::prod-app-data/*\",\"arn:aws:ec2:us-east-1:123456789012:instance/i-0abc123def4567890\",\"arn:aws:logs:us-east-1:123456789012:log-group:/prod/app:*\"]}. Still possible: all app data and log operations on the named bucket, log group, and instance. Describe calls remain available because AWS requires Resource \"*\" for them.",
+                "severity": "CRITICAL"
+              },
+              {
+                "issue": "Destructive and privilege-changing actions permitted with no aws:MultiFactorAuthPresent requirement (missing MFA)",
+                "fix_type": "mfa_requirement",
+                "concrete_policy_change": "Add to the ProdAppOperations statement: \"Condition\":{\"Bool\":{\"aws:MultiFactorAuthPresent\":\"true\"},\"NumericLessThan\":{\"aws:MultiFactorAuthAge\":\"3600\"}}. Apply the same Condition to the DenyOutOfScope statement via a second Deny: {\"Sid\":\"DenyWithoutMFA\",\"Effect\":\"Deny\",\"Action\":\"*\",\"Resource\":\"*\",\"Condition\":{\"BoolIfExists\":{\"aws:MultiFactorAuthPresent\":\"false\"}}}. Still possible: all listed operations for principals that authenticate with MFA within the last hour. Non-MFA sessions are denied.",
+                "severity": "CRITICAL"
+              }
+            ]
+          }
+        },
+        {
+          "step": "agent3_iam_reviewer",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-23T14:13:35.120Z",
+          "correlation_id": "1792764788448",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 3301,
+          "output_tokens": 1253,
+          "total_tokens": 4554,
+          "cost_usd": 0.0076528,
+          "verdict": "ESCALATE",
+          "review": {
+            "verdict": "ESCALATE",
+            "reasoning": "The fixes contradict each other (fix 1 keeps `\"*\"` in the operational Resource list and uses a broader `instance/*` ARN than fix 2's single instance), the DenyWithoutMFA `BoolIfExists` false on `*` will break MFA-less automation and service roles, sts:AssumeRole and iam:PassRole remain unrestricted so transitive escalation to admin roles is still possible, the session TTL and missing source-IP/VPC conditions are unaddressed, and the principal is unidentified in a production environment, so human sign-off is required."
+          }
+        }
+      ],
+      "status": "ESCALATE",
+      "total_tokens": 11522,
+      "total_cost": 0.0257872,
+      "final_risk_level": "CRITICAL",
+      "timestamp_end": "2026-10-23T14:13:35.120Z"
+    }
+  },
+  "escalation_info": {
+    "shouldEscalate": true,
+    "reasons": [
+      "iam: Risk level is CRITICAL",
+      "iam: HIGH risk in production environment",
+      "iam: 1 wildcard IAM permission(s) found",
+      "iam: Reviewer verdict is ESCALATE"
+    ],
+    "recommendation": "HUMAN_REVIEW_REQUIRED"
+  },
+  "substance_level": "core",
+  "final_status": "ESCALATED",
+  "report": "# Infrastructure & Security Review Report\n\n**Combined Risk Level**: CRITICAL\n\n## Access Control (IAM) Findings\n\n**Risk Level**: CRITICAL\n\nThe policy grants unrestricted administrative access to all actions and resources in production with no conditions, MFA, or session constraints, which is a critical exposure.\n\n### Access Issues\n- **overly_broad_permissions** (CRITICAL): Statement AllowEverything grants Action \"*\" on Resource \"*\", giving full administrative control over every AWS service and resource in production.\n- **missing_resource_boundaries** (CRITICAL): Resource is unscoped (\"*\"), so the statement reaches databases, KMS keys, security groups, and IAM itself with no ARN boundaries.\n- **missing_mfa** (CRITICAL): The statement permits destructive and privilege-changing actions (create, delete, modify, IAM changes) with no aws:MultiFactorAuthPresent requirement.\n- **missing_conditions** (HIGH): The statement has no Condition block (no source IP, time window, aws:SourceVpc, or request tag restrictions), so access is unrestricted by context.\n- **session_ttl** (MEDIUM): The document defines no session policy or maximum session duration, so any credentials issued to this principal could remain valid for the default maximum of 12 hours.\n\n## Synthesis & Recommendations\n\n# Infrastructure Security Review: Production IAM Access Control\n\n**Review Date:** 2026-10-23\n**Correlation ID:** 1792764788448\n**Workflows Triggered:** IAM Policy Audit (Access Control)\n**Combined Risk Level:** **CRITICAL**\n\n---\n\n## Executive Summary\n\nThe IAM policy audit reviewed a production policy containing a single statement, `AllowEverything`, which grants `Action: \"*\"` on `Resource: \"*\"` with no conditions, MFA requirements, or session constraints. This gives the attached principal unrestricted administrative control over every AWS service and resource in production, including databases, KMS keys, security groups, and IAM itself. The attached principal is not identified in the source document, which blocks ownership assignment and automated remediation. The proposed fixes reduce the exposure but contain internal contradictions, and the reviewer identified unresolved privilege escalation paths through `sts:AssumeRole` and `iam:PassRole`. The verdict is **ESCALATE**. Human sign-off is required before any remediation is deployed to production.\n\n---\n\n## Access Control (IAM) Findings\n\nRisk Level: **CRITICAL**\n\nThe policy grants unrestricted administrative access to all actions and resources in production with no conditions, MFA, or session constraints.\n\n### Overly Broad Permissions\n\n❌ **CRITICAL**: Unrestricted administrative grant in the `AllowEverything` statement.\n- **Principal**: Unidentified. Attached to the policy with Sid `AllowEverything`.\n- **Current Scope**: `Action: \"*\"`, `Resource: \"*\"`, `Effect: \"Allow\"`\n- **Impact**: The principal can create, modify, and delete any production resource, change IAM policies and roles, read or alter KMS keys, and modify databases and security groups. A compromise of this principal's credentials gives an attacker full control of the production account.\n- **Least-Privilege Target**: Replace the statement with a `ProdAppOperations` statement limited to the actions the application requires: `s3:GetObject`, `s3:PutObject`, `s3:ListBucket`, `ec2:StartInstances`, `ec2:StopInstances`, `ec2:RebootInstances`, `logs:CreateLogStream`, `logs:PutLogEvents`, and `cloudwatch:GetMetricData`. Add a `ReadOnlyDescribe` statement for `ec2:DescribeInstances` and `ec2:DescribeTags`.\n- **Reviewer Note on Fix 1**: The proposed `ProdAppOperations` statement still includes `\"*\"` in its Resource array. This negates the resource scoping for every listed action and must be removed before deployment.\n\n### Missing Resource Boundaries\n\n❌ **CRITICAL**: Unscoped `Resource: \"*\"` in the `AllowEverything` statement.\n- **Affected Resources**: Databases, KMS keys, security groups, and IAM resources in account `123456789012`, region `us-east-1`\n- **Impact**: No ARN boundaries prevent access to sensitive resource classes. Without boundaries, scoping by action alone is insufficient.\n- **Recommendation**: Scope the operational statement to the following ARNs:\n  - `arn:aws:s3:::prod-app-data` and `arn:aws:s3:::prod-app-data/*`\n  - `arn:aws:ec2:us-east-1:123456789012:instance/i-0abc123def4567890`\n  - `arn:aws:logs:us-east-1:123456789012:log-group:/prod/app:*`\n- **Note on Fix 2**: The proposed `DenyOutOfScope` statement uses `NotAction` and `NotResource` to block out-of-scope access. Fix 1 instead uses `instance/*` as the EC2 ARN, which conflicts with the single-instance ARN in Fix 2. The two fixes must be reconciled to a single instance ARN, or the scope must be widened deliberately with documented justification.\n- **Describe Calls**: `ec2:Describe*` requires `Resource: \"*\"` in AWS. This is an accepted exception and should be documented as such.\n\n### Missing MFA/Conditions\n\n❌ **CRITICAL**: No MFA requirement for destructive or privilege-changing actions.\n- **Principal**: Unidentified\n- **Gap**: Create, delete, modify, and IAM-change actions are permitted without `aws:MultiFactorAuthPresent`.\n- **Proposed Remediation**: Add `Bool: {\"aws:MultiFactorAuthPresent\": \"true\"}` and `NumericLessThan: {\"aws:MultiFactorAuthAge\": \"3600\"}` to the operational statement. Add a `DenyWithoutMFA` statement using `BoolIfExists` on `aws:MultiFactorAuthPresent` set to `false`.\n- **Reviewer Concern**: The `DenyWithoutMFA` statement applies to `Action: \"*\"` and `Resource: \"*\"`. It will break MFA-less automation and service roles. It must be scoped with exceptions for documented automation principals, or those principals must be moved to a separate policy.\n\n⚠️ **HIGH**: No Condition block restricting access by context.\n- **Principal**: Unidentified\n- **Gap**: No source IP, `aws:SourceVpc`, time window, or request tag restrictions.\n- **Impact**: Credentials for this principal are usable from any network location at any time.\n- **Recommendation**: Add `aws:SourceVpc` or `aws:SourceIp` conditions matching the production VPC and approved CIDR ranges. This is not addressed by the current proposed fixes.\n\n### Session Credential Issues\n\n⚠️ **MEDIUM**: No session policy or maximum session duration defined.\n- **Policy**: `AllowEverything` (attached to unidentified principal)\n- **Gap**: Credentials issued to this principal may remain valid for the default maximum of 12 hours.\n- **Impact**: A stolen session token remains usable for up to 12 hours with full administrative access.\n- **Recommendation**: Set `MaxSessionDuration` on the associated role to 3600 seconds (1 hour), the minimum allowed value. Confirm that the 1-hour setting does not break long-running automation.\n\n### Privilege Escalation Risks\n\n❌ **CRITICAL**: Unrestricted `sts:AssumeRole` and `iam:PassRole` create a transitive escalation path to administrative roles.\n- **Path**: The principal can assume or pass any role it has trust access to, including roles with higher privileges than the current policy grants. This remains possible under the proposed fixes because neither fix constrains these actions.\n- **Impact**: Even after the operational stat\n\n---\n\n*Report generated by Stage 5 Multi-Workflow Coordinator System*\n",
+  "timestamp": "2026-10-23T14:13:53.167Z"
+}
