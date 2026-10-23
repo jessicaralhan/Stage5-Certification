@@ -1,0 +1,110 @@
+# Stage 3 eval for Workflow 3 (IAM Policy Analyzer and Reviewer)
+# Tests IAM policy analysis, fix generation, and adversarial review
+
+prompts:
+  - file://prompts/workflow3-iam-analyzer.md
+
+providers:
+  - id: anthropic
+    config:
+      model: claude-haiku-5.5
+
+outputPath: ./results/workflow3-iam.json
+
+evaluateOptions:
+  maxConcurrency: 1
+  delay: 2000
+
+tests:
+  - description: "IAM policy with wildcard actions and resources - should detect"
+    vars:
+      policy: |
+        {{file://test-data/iam-overly-broad-policy.json}}
+      cloud_platform: "aws"
+      environment: "production"
+    assert:
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1));
+          return parsed.risk_level === "CRITICAL" && parsed.access_issues.length > 0;
+        metric: "detects-wildcard-actions"
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1));
+          return parsed.access_issues.some(issue =>
+            issue.type === "overly_broad_permissions" &&
+            issue.severity === "CRITICAL" &&
+            (issue.description.includes("*") || issue.current_scope.includes("all"))
+          );
+        metric: "wildcard-issue-severity-critical"
+      - type: llm-rubric
+        value: "The analyzer identifies that the policy grants Action: '*' on Resource: '*', which violates least privilege. The detection is specific: it names the severity as CRITICAL, describes this as 'wildcard actions on all resources', and explains the principle violated."
+        metric: "wildcard-detection-specificity"
+
+  - description: "Least-privilege IAM policy - should find no issues"
+    vars:
+      policy: |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "S3ReadOnly",
+              "Effect": "Allow",
+              "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+              ],
+              "Resource": [
+                "arn:aws:s3:::my-bucket",
+                "arn:aws:s3:::my-bucket/*"
+              ]
+            }
+          ]
+        }
+      cloud_platform: "aws"
+      environment: "production"
+    assert:
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1));
+          return parsed.risk_level === "LOW" && parsed.access_issues.length === 0;
+        metric: "least-privilege-no-issues"
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1));
+          return typeof parsed.summary === "string" && parsed.summary.length > 0;
+        metric: "valid-json-with-summary"
+
+  - description: "IAM policy with missing resource boundaries"
+    vars:
+      policy: |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "EC2Terminate",
+              "Effect": "Allow",
+              "Action": [
+                "ec2:TerminateInstances",
+                "ec2:StopInstances"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      cloud_platform: "aws"
+      environment: "production"
+    assert:
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1));
+          return parsed.risk_level !== "LOW";
+        metric: "detects-missing-resource-boundaries"
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1));
+          return parsed.access_issues.some(issue =>
+            issue.type === "missing_resource_boundaries" &&
+            issue.severity !== "LOW"
+          );
+        metric: "resource-boundary-issue-severity"

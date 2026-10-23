@@ -1,0 +1,93 @@
+# Stage 3 eval for Workflow 2 (Kubernetes Security Analyzer and Reviewer)
+# Tests K8s manifest analysis, fix generation, and adversarial review
+# Run with: node evals/run-workflow-tests.js
+
+prompts:
+  - file://prompts/workflow2-kubernetes-analyzer.md
+
+providers:
+  - id: anthropic
+    config:
+      model: claude-haiku-5.5
+
+outputPath: ./results/workflow2-kubernetes.json
+
+evaluateOptions:
+  maxConcurrency: 1
+  delay: 2000
+
+tests:
+  - description: "Benign K8s manifest - should find no issues"
+    vars:
+      manifests: |
+        {{file://test-data/k8s-benign.yaml}}
+      environment: "production"
+    assert:
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1));
+          return parsed.risk_level === "LOW" && parsed.security_issues.length === 0;
+        metric: "benign-manifest-no-issues"
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1));
+          return typeof parsed.summary === "string" && parsed.summary.length > 0;
+        metric: "valid-json-with-summary"
+
+  - description: "RBAC overly permissive - should detect admin-like binding"
+    vars:
+      manifests: |
+        {{file://test-data/k8s-rbac-overly-permissive.yaml}}
+      environment: "production"
+    assert:
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1));
+          return parsed.risk_level !== "LOW";
+        metric: "detects-rbac-issue"
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1));
+          return parsed.security_issues.some(issue =>
+            issue.type === "rbac" &&
+            issue.severity !== "LOW" &&
+            issue.description.includes("admin") || issue.description.includes("*")
+          );
+        metric: "rbac-issue-severity-and-detail"
+      - type: llm-rubric
+        value: "The analyzer identifies that the ClusterRoleBinding binds admin-like-role (which grants all verbs on all resources) to the app-sa ServiceAccount. The detection is specific: it names the role, identifies the wildcard permissions, and rates the severity as HIGH or CRITICAL."
+        metric: "rbac-detection-specificity"
+
+  - description: "K8s manifest with multiple security issues - all types"
+    vars:
+      manifests: |
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: insecure-pod
+          namespace: default
+        spec:
+          serviceAccountName: default
+          hostNetwork: true
+          hostPID: true
+          containers:
+          - name: app
+            image: app:latest
+            securityContext:
+              privileged: true
+              runAsUser: 0
+            ports:
+            - containerPort: 8080
+      environment: "production"
+    assert:
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1));
+          return parsed.security_issues.length >= 3;
+        metric: "detects-multiple-issues"
+      - type: javascript
+        value: |
+          const parsed = JSON.parse(output.slice(output.indexOf('{'), output.lastIndexOf('}') + 1));
+          const types = new Set(parsed.security_issues.map(i => i.type));
+          return types.has("pod_security") && types.has("security_context");
+        metric: "detects-pod-and-context-issues"

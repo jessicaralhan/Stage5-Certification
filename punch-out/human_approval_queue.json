@@ -1,0 +1,333 @@
+[
+  {
+    "run_id": "eval_run_scenario2",
+    "scenario": "scenario-2-prod-db-destroy.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T08:55:41.507Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_db_instance.orders_prod"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario2.json"
+  },
+  {
+    "run_id": "eval_run_scenario3",
+    "scenario": "scenario-3-security-exposure.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T08:56:07.923Z",
+    "reason": "Hard override: CRITICAL/HIGH security exposure on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_security_group.web"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario3.json"
+  },
+  {
+    "run_id": "eval_run_scenario4",
+    "scenario": "scenario-4-subtle-flaw.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T08:56:44.274Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_db_instance.billing_prod"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario4.json"
+  },
+  {
+    "run_id": "eval_run_scenario5",
+    "scenario": "scenario-5-revision-loop.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T08:57:18.988Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_instance.internal_api",
+      "aws_security_group.internal_api"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario5.json"
+  },
+  {
+    "run_id": "eval_run_scenario6",
+    "scenario": "scenario-6-real-terraform-run.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T08:57:56.161Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "local_file.app_config",
+      "null_resource.orders_db_bootstrap"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario6.json"
+  },
+  {
+    "run_id": "eval_run_scenario7",
+    "scenario": "scenario-7-staging-destructive.txt",
+    "environment": "non-production",
+    "escalated_at": "2026-10-15T08:58:31.112Z",
+    "reason": "Agent 3 verdict was ESCALATE: The primary fix stops the destroy only by reverting the deliberately requested 2026 rename, so it does not achieve the intended change, and its claim of a zero-change plan is wrong because force_destroy produces an in-place update. The rename path is a multi-step data migration with unverified data integrity and consumer dependencies, and it requires human sign-off on whether the rename is needed and on deleting the old bucket.",
+    "resources": [
+      "aws_s3_bucket.staging_uploads"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario7.json"
+  },
+  {
+    "run_id": "eval_run_scenario8",
+    "scenario": "scenario-8-prod-medium-security.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T08:58:54.137Z",
+    "reason": "Hard override: CRITICAL/HIGH security exposure on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_security_group.bastion"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario8.json"
+  },
+  {
+    "run_id": "eval_run_scenario2",
+    "scenario": "scenario-2-prod-db-destroy.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:17:23.547Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_db_instance.orders_prod"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario2.json"
+  },
+  {
+    "run_id": "eval_run_scenario3",
+    "scenario": "scenario-3-security-exposure.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:17:59.336Z",
+    "reason": "Hard override: CRITICAL/HIGH security exposure on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_security_group.web"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario3.json"
+  },
+  {
+    "run_id": "eval_run_scenario5",
+    "scenario": "scenario-5-revision-loop.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:19:05.278Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_instance.internal_api",
+      "aws_security_group.internal_api"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario5.json"
+  },
+  {
+    "run_id": "eval_run_scenario6",
+    "scenario": "scenario-6-real-terraform-run.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:19:43.980Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "local_file.app_config",
+      "null_resource.orders_db_bootstrap"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario6.json"
+  },
+  {
+    "run_id": "eval_run_scenario7",
+    "scenario": "scenario-7-staging-destructive.txt",
+    "environment": "non-production",
+    "escalated_at": "2026-10-15T09:20:14.802Z",
+    "reason": "Agent 3 verdict was ESCALATE: Step 1 is technically sound and stops the destroy, but it drops the rename without confirming the owner no longer needs it, and Step 2 is explicitly marked as requiring owner approval for the data copy and consumer cutover. Because requires_human_signoff is true, the remediation must go to a human, and Step 2 also needs fixes to ordering, data-migration completeness, and version pinning before it could be safely applied.",
+    "resources": [
+      "aws_s3_bucket.staging_uploads"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario7.json"
+  },
+  {
+    "run_id": "eval_run_scenario8",
+    "scenario": "scenario-8-prod-medium-security.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:20:44.291Z",
+    "reason": "Hard override: CRITICAL/HIGH security exposure on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_security_group.bastion"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario8.json"
+  },
+  {
+    "run_id": "run_004",
+    "scenario": "scenario-4-subtle-flaw.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:22:26.079Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_db_instance.billing_prod"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/run_004.json"
+  },
+  {
+    "run_id": "eval_run_scenario2",
+    "scenario": "scenario-2-prod-db-destroy.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:23:09.081Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_db_instance.orders_prod"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario2.json"
+  },
+  {
+    "run_id": "eval_run_scenario3",
+    "scenario": "scenario-3-security-exposure.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:23:33.238Z",
+    "reason": "Hard override: CRITICAL/HIGH security exposure on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_security_group.web"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario3.json"
+  },
+  {
+    "run_id": "eval_run_scenario4",
+    "scenario": "scenario-4-subtle-flaw.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:24:03.049Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_db_instance.billing_prod"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario4.json"
+  },
+  {
+    "run_id": "eval_run_scenario6",
+    "scenario": "scenario-6-real-terraform-run.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:25:03.163Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "local_file.app_config",
+      "null_resource.orders_db_bootstrap"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario6.json"
+  },
+  {
+    "run_id": "eval_run_scenario7",
+    "scenario": "scenario-7-staging-destructive.txt",
+    "environment": "non-production",
+    "escalated_at": "2026-10-15T09:25:34.712Z",
+    "reason": "Agent 3 verdict was ESCALATE: The primary fix removes the destroy but abandons the intended rename without owner input, and the staged migration as written is internally contradictory (step 1 leaves a conflicting bucket name in place) and not version-safe for data copy or deletion. Deleting or migrating the bucket's data and deciding whether the rename is required are business decisions that need human sign-off, even in a non-production environment.",
+    "resources": [
+      "aws_s3_bucket.staging_uploads"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario7.json"
+  },
+  {
+    "run_id": "eval_run_scenario8",
+    "scenario": "scenario-8-prod-medium-security.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:26:00.807Z",
+    "reason": "Hard override: CRITICAL/HIGH security exposure on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_security_group.bastion"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario8.json"
+  },
+  {
+    "run_id": "eval_run_scenario2",
+    "scenario": "scenario-2-prod-db-destroy.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:37:48.227Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_db_instance.orders_prod"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario2.json"
+  },
+  {
+    "run_id": "eval_run_scenario3",
+    "scenario": "scenario-3-security-exposure.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:38:15.711Z",
+    "reason": "Hard override: CRITICAL/HIGH security exposure on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_security_group.web"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario3.json"
+  },
+  {
+    "run_id": "eval_run_scenario4",
+    "scenario": "scenario-4-subtle-flaw.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:38:47.978Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_db_instance.billing_prod"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario4.json"
+  },
+  {
+    "run_id": "eval_run_scenario5",
+    "scenario": "scenario-5-revision-loop.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:39:27.009Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_instance.internal_api",
+      "aws_security_group.internal_api"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario5.json"
+  },
+  {
+    "run_id": "eval_run_scenario6",
+    "scenario": "scenario-6-real-terraform-run.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:40:13.561Z",
+    "reason": "Hard override: findings include a destructive/forces-replacement change on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "local_file.app_config",
+      "null_resource.orders_db_bootstrap"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario6.json"
+  },
+  {
+    "run_id": "eval_run_scenario7",
+    "scenario": "scenario-7-staging-destructive.txt",
+    "environment": "non-production",
+    "escalated_at": "2026-10-15T09:40:45.701Z",
+    "reason": "Agent 3 verdict was ESCALATE: Step 1 stops the replacement only by dropping the intended bucket rename, and Step 2 is incomplete as HCL and as a data migration (the original resource block is never removed, and sync does not preserve bucket configuration or version history). The remediation also requires human sign-off on the rename intent, consumer repointing, and irreversible bucket deletion, so it cannot be approved automatically.",
+    "resources": [
+      "aws_s3_bucket.staging_uploads"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario7.json"
+  },
+  {
+    "run_id": "eval_run_scenario8",
+    "scenario": "scenario-8-prod-medium-security.txt",
+    "environment": "production",
+    "escalated_at": "2026-10-15T09:41:16.579Z",
+    "reason": "Hard override: CRITICAL/HIGH security exposure on a production resource. This decision is never left to the AI verdict alone, regardless of what Agent 3 concluded.",
+    "resources": [
+      "aws_security_group.bastion"
+    ],
+    "status": "AWAITING_HUMAN_APPROVAL",
+    "audit_log": "runs/eval_run_scenario8.json"
+  }
+]

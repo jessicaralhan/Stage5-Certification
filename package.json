@@ -1,0 +1,22 @@
+{
+  "name": "stage5-certification",
+  "version": "1.0.0",
+  "description": "Stage 5: Multi-Workflow Coordinator System",
+  "main": "workflow/orchestrator.js",
+  "scripts": {
+    "test": "node workflow/workflow.test.js",
+    "test:k8s": "promptfoo eval -c evals/workflow2-kubernetes.yaml",
+    "test:iam": "promptfoo eval -c evals/workflow3-iam.yaml",
+    "test:terraform": "promptfoo eval -c evals/workflow1-terraform.yaml"
+  },
+  "keywords": [],
+  "author": "jessica@rjliving.com.au",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.3",
+    "dotenv": "^16.6.1"
+  },
+  "devDependencies": {
+    "promptfoo": "^0.82.0"
+  }
+}

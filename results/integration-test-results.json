@@ -1,0 +1,72 @@
+{
+  "timestamp": "2026-10-23T12:10:14.045Z",
+  "total": 5,
+  "passed": 5,
+  "failed": 0,
+  "results": [
+    {
+      "scenario": {
+        "id": "tf-benign",
+        "name": "Terraform: Benign configuration (no issues)",
+        "input": "test-data/terraform-benign.tf",
+        "environment": "production",
+        "expectedWorkflow": "terraform",
+        "expectedStatus": "ESCALATED",
+        "expectedRisk": "HIGH"
+      },
+      "passed": true,
+      "issues": []
+    },
+    {
+      "scenario": {
+        "id": "tf-destructive",
+        "name": "Terraform: Destructive change in production",
+        "input": "test-data/terraform-destructive.tf",
+        "environment": "production",
+        "expectedWorkflow": "terraform",
+        "expectedStatus": "ESCALATED",
+        "expectedRisk": "CRITICAL"
+      },
+      "passed": true,
+      "issues": []
+    },
+    {
+      "scenario": {
+        "id": "k8s-benign",
+        "name": "Kubernetes: Properly secured manifest",
+        "input": "test-data/k8s-benign.yaml",
+        "environment": "production",
+        "expectedWorkflow": "kubernetes",
+        "expectedRisk": "HIGH"
+      },
+      "passed": true,
+      "issues": []
+    },
+    {
+      "scenario": {
+        "id": "k8s-rbac-issue",
+        "name": "Kubernetes: RBAC overly permissive (wildcard binding)",
+        "input": "test-data/k8s-rbac-overly-permissive.yaml",
+        "environment": "production",
+        "expectedWorkflow": "kubernetes",
+        "expectedStatus": "ESCALATED",
+        "expectedRisk": "CRITICAL"
+      },
+      "passed": true,
+      "issues": []
+    },
+    {
+      "scenario": {
+        "id": "iam-wildcard",
+        "name": "IAM: Wildcard actions and resources",
+        "input": "test-data/iam-overly-broad-policy.json",
+        "environment": "production",
+        "expectedWorkflow": "iam",
+        "expectedStatus": "ESCALATED",
+        "expectedRisk": "CRITICAL"
+      },
+      "passed": true,
+      "issues": []
+    }
+  ]
+}
