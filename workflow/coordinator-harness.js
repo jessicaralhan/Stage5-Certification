@@ -54,13 +54,13 @@ async function callCoordinator(filePath, content, environment) {
 }
 
 // Execute chosen workflow
-async function executeWorkflow(workflowType, inputFile, environment) {
+async function executeWorkflow(workflowType, inputFile, environment, correlationId) {
   process.stdout.write(`\n[Orchestrator] Executing ${workflowType} workflow...\n`);
 
   // Import the appropriate workflow executor
   try {
     const executor = require(path.join(__dirname, `${workflowType}-executor.js`));
-    const result = await executor.run(inputFile, environment);
+    const result = await executor.run(inputFile, environment, correlationId);
     return result;
   } catch (err) {
     throw new Error(`Failed to execute ${workflowType} workflow: ${err.message}`);
@@ -118,7 +118,8 @@ Examples:
 
     // Step 3: Execute the chosen workflow
     process.stdout.write(`[Step 3] Executing workflow...\n`);
-    const workflowResult = await executeWorkflow(coordinatorDecision.decision, inputFile, environment);
+    const runId = `${Date.now()}`;
+    const workflowResult = await executeWorkflow(coordinatorDecision.decision, inputFile, environment, runId);
 
     process.stdout.write(`[Step 3] Workflow complete. Risk level: ${workflowResult.risk_level}\n`);
 
@@ -170,7 +171,6 @@ Examples:
       fs.mkdirSync(resultsDir, { recursive: true });
     }
 
-    const runId = `${Date.now()}`;
     const finalOutput = {
       run_id: runId,
       coordinator_decision: coordinatorDecision.decision,

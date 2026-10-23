@@ -1,5 +1,34 @@
+# Node modules and dependencies
 node_modules/
+npm-debug.log
+npm-debug.log*
+yarn-debug.log
+yarn-debug.log*
+yarn-error.log
+yarn-error.log*
+package-lock.json
+yarn.lock
+.pnpm-debug.log
+
+# Environment files
 .env
+.env.local
+.env.*.local
+
+# OS files
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
 *.log
+logs/
+
+# IDE
 .claude/
+.vscode/settings.json
+
+# Temporary files
+.tmp/
+temp/

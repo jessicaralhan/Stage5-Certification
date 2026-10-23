@@ -4,7 +4,7 @@ require('dotenv').config({ override: true });
 
 const fs = require('fs');
 const path = require('path');
-const { callClaude } = require('./anthropic-client');
+const { callClaude, calculateCost } = require('./anthropic-client');
 
 // Load prompts
 function loadPrompt(name) {
@@ -68,11 +68,15 @@ function validateGeneratorConcreteness(remediations) {
   return true;
 }
 
-async function runTerraformWorkflow(planContent, environment) {
+async function runTerraformWorkflow(planContent, environment, correlationId) {
   const audit = {
     workflow: 'terraform',
+    correlation_id: correlationId,
+    timestamp_start: new Date().toISOString(),
     steps: [],
     status: 'RUNNING',
+    total_tokens: 0,
+    total_cost: 0,
   };
 
   try {
@@ -125,14 +129,27 @@ async function runTerraformWorkflow(planContent, environment) {
       throw new Error(`Agent 1 output not valid JSON: ${err.message}. Response: ${agent1Response.text.substring(0, 300)}`);
     }
 
+    const agent1Cost = calculateCost(agent1Response.model, agent1Response.inputTokens, agent1Response.outputTokens);
+    const agent1TotalTokens = agent1Response.inputTokens + agent1Response.outputTokens;
+    audit.total_tokens += agent1TotalTokens;
+    audit.total_cost += agent1Cost;
+
     audit.steps.push({
       step: 'agent1_terraform_analyzer',
       status: 'COMPLETE',
+      timestamp: new Date().toISOString(),
+      correlation_id: correlationId,
+      model: agent1Response.model,
+      input_tokens: agent1Response.inputTokens,
+      output_tokens: agent1Response.outputTokens,
+      total_tokens: agent1TotalTokens,
+      cost_usd: agent1Cost,
       findings: agent1Findings,
     });
 
     process.stdout.write(`    ✓ Risk level: ${agent1Findings.risk_level}\n`);
     process.stdout.write(`    ✓ Issues found: ${(agent1Findings.destructive_changes || []).length} destructive, ${(agent1Findings.security_exposure || []).length} security\n`);
+    process.stdout.write(`    ✓ Tokens: ${agent1TotalTokens} | Cost: $${agent1Cost.toFixed(6)}\n`);
 
     // If no issues, return early
     if (agent1Findings.risk_level === 'LOW' && (!agent1Findings.destructive_changes || agent1Findings.destructive_changes.length === 0)) {
@@ -178,13 +195,26 @@ async function runTerraformWorkflow(planContent, environment) {
       // Warning only - don't fail, as prompts already enforce concreteness
     }
 
+    const agent2Cost = calculateCost(agent2Response.model, agent2Response.inputTokens, agent2Response.outputTokens);
+    const agent2TotalTokens = agent2Response.inputTokens + agent2Response.outputTokens;
+    audit.total_tokens += agent2TotalTokens;
+    audit.total_cost += agent2Cost;
+
     audit.steps.push({
       step: 'agent2_remediation_generator',
       status: 'COMPLETE',
+      timestamp: new Date().toISOString(),
+      correlation_id: correlationId,
+      model: agent2Response.model,
+      input_tokens: agent2Response.inputTokens,
+      output_tokens: agent2Response.outputTokens,
+      total_tokens: agent2TotalTokens,
+      cost_usd: agent2Cost,
       remediations: agent2Remediations,
     });
 
     process.stdout.write(`    ✓ Fixes generated: ${(agent2Remediations.remediations || []).length}\n`);
+    process.stdout.write(`    ✓ Tokens: ${agent2TotalTokens} | Cost: $${agent2Cost.toFixed(6)}\n`);
 
     // Step 3: Agent 3 - Adversarial Reviewer
     process.stdout.write('  → Agent 3: Reviewing fixes...\n');
@@ -209,18 +239,32 @@ async function runTerraformWorkflow(planContent, environment) {
       throw new Error(`Agent 3 output not valid JSON: ${err.message}. Response: ${agent3Response.text.substring(0, 300)}`);
     }
 
+    const agent3Cost = calculateCost(agent3Response.model, agent3Response.inputTokens, agent3Response.outputTokens);
+    const agent3TotalTokens = agent3Response.inputTokens + agent3Response.outputTokens;
+    audit.total_tokens += agent3TotalTokens;
+    audit.total_cost += agent3Cost;
+
     audit.steps.push({
       step: 'agent3_adversarial_reviewer',
       status: 'COMPLETE',
+      timestamp: new Date().toISOString(),
+      correlation_id: correlationId,
+      model: agent3Response.model,
+      input_tokens: agent3Response.inputTokens,
+      output_tokens: agent3Response.outputTokens,
+      total_tokens: agent3TotalTokens,
+      cost_usd: agent3Cost,
       verdict: agent3Review.verdict,
       review: agent3Review,
     });
 
     process.stdout.write(`    ✓ Verdict: ${agent3Review.verdict}\n`);
+    process.stdout.write(`    ✓ Tokens: ${agent3TotalTokens} | Cost: $${agent3Cost.toFixed(6)}\n`);
 
     // Determine final status
     audit.final_risk_level = agent1Findings.risk_level;
     audit.status = agent3Review.verdict === 'APPROVE' ? 'APPROVED' : agent3Review.verdict === 'REVISE' ? 'REVISE' : 'ESCALATE';
+    audit.timestamp_end = new Date().toISOString();
 
     // Return comprehensive result
     return {
@@ -234,6 +278,9 @@ async function runTerraformWorkflow(planContent, environment) {
       audit_trail: audit,
     };
   } catch (err) {
+    audit.timestamp_end = new Date().toISOString();
+    audit.status = 'FAILED';
+    audit.error = err.message;
     return {
       workflow: 'terraform',
       risk_level: 'UNKNOWN',
@@ -242,14 +289,14 @@ async function runTerraformWorkflow(planContent, environment) {
       cost_notes: [],
       remediations: [],
       verdict: 'ERROR',
-      audit_trail: { ...audit, status: 'FAILED', error: err.message },
+      audit_trail: audit,
     };
   }
 }
 
-async function run(inputFile, environment) {
+async function run(inputFile, environment, correlationId) {
   const content = fs.readFileSync(inputFile, 'utf-8');
-  return runTerraformWorkflow(content, environment);
+  return runTerraformWorkflow(content, environment, correlationId);
 }
 
 module.exports = { run, runTerraformWorkflow };

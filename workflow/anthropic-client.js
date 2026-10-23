@@ -224,4 +224,18 @@ async function callClaude({ system, user, model = DEFAULT_MODEL, maxTokens = 819
   throw lastError || new Error('callClaude failed after retries');
 }
 
-module.exports = { callClaude, callClaudeStream, loadEnvFile, resolveApiKey, API_KEY_ENV_NAMES, DEFAULT_MODEL };
+// Calculate cost based on model and token counts
+// Pricing: Claude Haiku 5.5 = $0.80 per 1M input tokens, $4.00 per 1M output tokens
+function calculateCost(model, inputTokens, outputTokens) {
+  const pricingTable = {
+    'claude-haiku-5-5': {
+      input: 0.80 / 1000000,  // $0.80 per 1M input tokens
+      output: 4.00 / 1000000, // $4.00 per 1M output tokens
+    },
+  };
+  const rate = pricingTable[model] || pricingTable['claude-haiku-5-5'];
+  const cost = inputTokens * rate.input + outputTokens * rate.output;
+  return Math.round(cost * 100000000) / 100000000; // Round to 8 decimals
+}
+
+module.exports = { callClaude, callClaudeStream, loadEnvFile, resolveApiKey, API_KEY_ENV_NAMES, DEFAULT_MODEL, calculateCost };
