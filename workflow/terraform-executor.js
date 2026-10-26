@@ -7,12 +7,10 @@ const path = require('path');
 const { callClaude, calculateCost } = require('./anthropic-client');
 const { extractJSON } = require('./json-utils');
 
-// Load prompts
 function loadPrompt(name) {
   return fs.readFileSync(path.join(__dirname, `../prompts/${name}`), 'utf-8');
 }
 
-// Validate Agent 2 generator output for concreteness
 function validateGeneratorConcreteness(remediations) {
   const placeholderPatterns = /\[.*?\]|<.*?>|todo|tbd|fixme|placeholder|xxx/gi;
 

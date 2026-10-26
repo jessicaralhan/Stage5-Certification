@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-10-26T04:19:17.150Z",
+  "timestamp": "2026-10-26T05:02:52.042Z",
   "total": 5,
-  "passed": 5,
-  "failed": 0,
+  "passed": 0,
+  "failed": 5,
   "results": [
     {
       "scenario": {
@@ -14,8 +14,10 @@
         "expectedStatus": "ESCALATED",
         "expectedRisk": "HIGH"
       },
-      "passed": true,
-      "issues": []
+      "passed": false,
+      "issues": [
+        "Routing mismatch: expected terraform, got undefined"
+      ]
     },
     {
       "scenario": {
@@ -27,8 +29,10 @@
         "expectedStatus": "ESCALATED",
         "expectedRisk": "CRITICAL"
       },
-      "passed": true,
-      "issues": []
+      "passed": false,
+      "issues": [
+        "Routing mismatch: expected terraform, got undefined"
+      ]
     },
     {
       "scenario": {
@@ -39,8 +43,10 @@
         "expectedWorkflow": "kubernetes",
         "expectedRisk": "HIGH"
       },
-      "passed": true,
-      "issues": []
+      "passed": false,
+      "issues": [
+        "Routing mismatch: expected kubernetes, got undefined"
+      ]
     },
     {
       "scenario": {
@@ -52,8 +58,10 @@
         "expectedStatus": "ESCALATED",
         "expectedRisk": "CRITICAL"
       },
-      "passed": true,
-      "issues": []
+      "passed": false,
+      "issues": [
+        "Routing mismatch: expected kubernetes, got undefined"
+      ]
     },
     {
       "scenario": {
@@ -65,8 +73,11 @@
         "expectedStatus": "ESCALATED",
         "expectedRisk": "CRITICAL"
       },
-      "passed": true,
-      "issues": []
+      "passed": false,
+      "issues": [
+        "Routing mismatch: expected iam, got undefined",
+        "Risk level mismatch: expected CRITICAL, got UNKNOWN"
+      ]
     }
   ]
 }

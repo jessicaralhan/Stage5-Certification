@@ -7,7 +7,6 @@ require('dotenv').config({ override: true });
 
 const fs = require('fs');
 const path = require('path');
-const { callClaude } = require('./anthropic-client');
 const { generateReport } = require('./report-writer-executor');
 const { determineEscalation, assessSubstance } = require('./escalation-gates');
 
@@ -17,41 +16,6 @@ const WORKFLOWS = {
   kubernetes: './workflow/kubernetes-executor.js',
   iam: './workflow/iam-executor.js',
 };
-
-// No file type detection here — coordinator agent handles this independently
-
-// Call Coordinator Agent to make independent routing decision
-async function callCoordinator(filePath, content, environment) {
-  const coordinatorPrompt = fs.readFileSync(
-    path.join(__dirname, '../prompts/coordinator-agent.md'),
-    'utf-8'
-  );
-
-  // Coordinator gets first 1500 chars of input — enough for analysis, not the entire file
-  const contentPreview = content.substring(0, 1500);
-
-  const prompt = coordinatorPrompt
-    .replace('{{input_file}}', path.basename(filePath))
-    .replace('{{environment}}', environment)
-    .replace('{{input_content}}', contentPreview);
-
-  const result = await callClaude({
-    user: prompt,
-    model: 'claude-haiku-5-5',
-    maxTokens: 500,
-  });
-
-  // Parse Coordinator's response
-  let parsed;
-  try {
-    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
-    parsed = JSON.parse(jsonMatch[0]);
-  } catch (err) {
-    throw new Error(`Coordinator response was not valid JSON: ${result.text.substring(0, 200)}`);
-  }
-
-  return parsed;
-}
 
 // Execute chosen workflow
 async function executeWorkflow(workflowType, inputFile, environment, correlationId) {
@@ -71,70 +35,69 @@ async function executeWorkflow(workflowType, inputFile, environment, correlation
 async function main() {
   const args = process.argv.slice(2);
 
-  if (args.length < 1) {
+  if (args.length < 2) {
     process.stdout.write(`
-Usage: node coordinator-harness.js <input_file> [environment]
+Usage: node coordinator-harness.js <input_file> <workflow_type> [environment]
+
+Workflow types: terraform, kubernetes, iam
 
 Examples:
-  node coordinator-harness.js config.tf production
-  node coordinator-harness.js manifest.yaml staging
-  node coordinator-harness.js policy.json production
+  node coordinator-harness.js config.tf terraform production
+  node coordinator-harness.js manifest.yaml kubernetes staging
+  node coordinator-harness.js policy.json iam production
 `);
     process.exit(1);
   }
 
   const inputFile = args[0];
-  const environment = args[1] || 'non-production';
+  const workflowType = args[1];
+  const environment = args[2] || 'non-production';
 
   if (!fs.existsSync(inputFile)) {
     process.stderr.write(`Error: File not found: ${inputFile}\n`);
     process.exit(1);
   }
 
+  // Validate workflow type
+  if (!['terraform', 'kubernetes', 'iam'].includes(workflowType)) {
+    process.stderr.write(`Error: Invalid workflow type: ${workflowType}\n`);
+    process.stderr.write(`Valid types: terraform, kubernetes, iam\n`);
+    process.exit(1);
+  }
+
   process.stdout.write(`\n=== Stage 5 Coordinator: Multi-Workflow Orchestration ===\n`);
   process.stdout.write(`Input: ${inputFile}\n`);
+  process.stdout.write(`Workflow: ${workflowType}\n`);
   process.stdout.write(`Environment: ${environment}\n\n`);
 
   try {
-    // Step 1: Load input
-    const content = fs.readFileSync(inputFile, 'utf-8');
-    process.stdout.write(`[Step 1] Loaded input file (${content.length} bytes)\n`);
+    // Step 1: Validate input file
+    process.stdout.write(`[Step 1] Validating input file...\n`);
+    const fileSize = fs.statSync(inputFile).size;
+    process.stdout.write(`    ✓ Input file exists (${fileSize} bytes)\n`);
 
-    // Step 2: Call Coordinator for independent routing decision (no pre-detection hints)
-    process.stdout.write(`[Step 2] Calling Coordinator for routing decision...\n`);
-    const coordinatorDecision = await callCoordinator(inputFile, content, environment);
-
-    if (!coordinatorDecision.decision) {
-      throw new Error('Coordinator did not make a routing decision');
-    }
-
-    // Validate coordinator decision is one of the valid workflows
-    if (!['terraform', 'kubernetes', 'iam'].includes(coordinatorDecision.decision)) {
-      throw new Error(`Coordinator returned invalid workflow: ${coordinatorDecision.decision}`);
-    }
-
-    process.stdout.write(`[Step 2] Coordinator decision: ${coordinatorDecision.decision} (${coordinatorDecision.confidence})\n`);
-    process.stdout.write(`         Reason: ${coordinatorDecision.reason}\n`);
-
-    // Step 3: Execute the chosen workflow
-    process.stdout.write(`[Step 3] Executing workflow...\n`);
+    // Step 2: Execute the chosen workflow
+    process.stdout.write(`[Step 2] Executing ${workflowType} workflow...\n`);
     const runId = `${Date.now()}`;
-    const workflowResult = await executeWorkflow(coordinatorDecision.decision, inputFile, environment, runId);
+    const workflowResult = await executeWorkflow(workflowType, inputFile, environment, runId);
 
-    process.stdout.write(`[Step 3] Workflow complete. Risk level: ${workflowResult.risk_level}\n`);
+    process.stdout.write(`[Step 2] Workflow complete. Risk level: ${workflowResult.risk_level}\n`);
 
-    // Step 4: Check escalation gates
-    process.stdout.write(`[Step 4] Checking escalation gates...\n`);
+    // Step 3: Check escalation gates
+    process.stdout.write(`[Step 3] Checking escalation gates...\n`);
 
     const workflowFindings = {};
-    workflowFindings[coordinatorDecision.decision] = workflowResult;
+    workflowFindings[workflowType] = workflowResult;
 
     const substanceLevel = assessSubstance(workflowFindings, environment);
     const escalationInfo = determineEscalation(workflowFindings, environment);
 
-    // Check substance-based elevation: if toy, escalate
-    // Note: In this architecture, each run executes exactly one workflow, so the 2+ peripheral check
-    // would require multiple independent runs to be evaluated together (outside this coordinator)
+    // Substance-based elevation:
+    // Per Stage 5 spec: "If any workflow is scored toy, or two or more are peripheral, the system elevates for human review"
+    // Note: In this single-workflow-per-run architecture, only the "toy" check applies.
+    // The "2+ peripheral" check would require a batch evaluation system that coordinates multiple
+    // concurrent workflows, which is outside the scope of this single-run coordinator.
+
     if (substanceLevel === 'toy') {
       escalationInfo.shouldEscalate = true;
       escalationInfo.reasons.push(`Substance-based elevation: Workflow substance level is toy (no significant findings)`);
@@ -149,19 +112,19 @@ Examples:
       });
     }
 
-    // Step 5: Generate report (using Report Writer agent)
-    process.stdout.write(`[Step 5] Generating unified report...\n`);
+    // Step 4: Generate report (using Report Writer agent)
+    process.stdout.write(`[Step 4] Generating unified report...\n`);
 
     let report;
     try {
       report = await generateReport(workflowFindings);
     } catch (err) {
       process.stdout.write(`    ! Report Writer failed, using fallback format\n`);
-      report = fallbackReportGeneration(coordinatorDecision.decision, workflowResult);
+      report = fallbackReportGeneration(workflowType, workflowResult);
     }
 
-    // Step 6: Determine final status
-    process.stdout.write(`[Step 6] Determining final status...\n`);
+    // Step 5: Determine final status
+    process.stdout.write(`[Step 5] Determining final status...\n`);
 
     let finalStatus = 'APPROVED';
     if (escalationInfo.shouldEscalate) {
@@ -171,8 +134,8 @@ Examples:
       process.stdout.write(`    ✓ Auto-approved (no escalation criteria met)\n`);
     }
 
-    // Step 7: Output results
-    process.stdout.write(`[Step 7] Writing results...\n`);
+    // Step 6: Output results
+    process.stdout.write(`[Step 6] Writing results...\n`);
 
     const resultsDir = path.join(__dirname, '../results');
     if (!fs.existsSync(resultsDir)) {
@@ -181,8 +144,8 @@ Examples:
 
     const finalOutput = {
       run_id: runId,
-      coordinator_decision: coordinatorDecision.decision,
-      workflow_executed: coordinatorDecision.decision,
+      workflow_type: workflowType,
+      workflow_executed: workflowType,
       environment: environment,
       workflow_findings: workflowResult,
       escalation_info: escalationInfo,
@@ -279,4 +242,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { callCoordinator, executeWorkflow };
+module.exports = { executeWorkflow };

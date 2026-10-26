@@ -1,0 +1,302 @@
+{
+  "run_id": "1792990890134",
+  "workflow_type": "kubernetes",
+  "workflow_executed": "kubernetes",
+  "environment": "production",
+  "workflow_findings": {
+    "workflow": "kubernetes",
+    "risk_level": "CRITICAL",
+    "security_issues": [
+      {
+        "type": "rbac",
+        "severity": "CRITICAL",
+        "resource_kind": "ClusterRole",
+        "resource_name": "admin-like-role",
+        "namespace": "cluster-wide",
+        "description": "ClusterRole admin-like-role grants wildcard verbs (*) on wildcard resources (*) across all API groups (*), which is equivalent to cluster-admin."
+      },
+      {
+        "type": "rbac",
+        "severity": "CRITICAL",
+        "resource_kind": "ClusterRole",
+        "resource_name": "app-admin-binding",
+        "namespace": "cluster-wide",
+        "description": "ClusterRoleBinding app-admin-binding binds the cluster-admin-equivalent admin-like-role to ServiceAccount app-sa in namespace insecure-app, giving the application full control of the cluster."
+      },
+      {
+        "type": "rbac",
+        "severity": "HIGH",
+        "resource_kind": "ServiceAccount",
+        "resource_name": "app-sa",
+        "namespace": "insecure-app",
+        "description": "ServiceAccount app-sa is used by the workload with cluster-wide wildcard privileges and its API token is auto-mounted by default."
+      },
+      {
+        "type": "network_policy",
+        "severity": "HIGH",
+        "resource_kind": "NetworkPolicy",
+        "resource_name": "insecure-app",
+        "namespace": "insecure-app",
+        "description": "No NetworkPolicy exists in namespace insecure-app, so all ingress and egress traffic to and from the insecure-app Deployment is allowed by default."
+      },
+      {
+        "type": "security_context",
+        "severity": "HIGH",
+        "resource_kind": "Deployment",
+        "resource_name": "insecure-app",
+        "namespace": "insecure-app",
+        "description": "Container app has no securityContext, so runAsNonRoot is not enforced and the image app:latest may run as root."
+      },
+      {
+        "type": "security_context",
+        "severity": "MEDIUM",
+        "resource_kind": "Deployment",
+        "resource_name": "insecure-app",
+        "namespace": "insecure-app",
+        "description": "Container app does not set readOnlyRootFilesystem, leaving the root filesystem writable."
+      },
+      {
+        "type": "security_context",
+        "severity": "MEDIUM",
+        "resource_kind": "Deployment",
+        "resource_name": "insecure-app",
+        "namespace": "insecure-app",
+        "description": "Container app does not set allowPrivilegeEscalation: false, so processes can gain more privileges than their parent."
+      },
+      {
+        "type": "security_context",
+        "severity": "MEDIUM",
+        "resource_kind": "Deployment",
+        "resource_name": "insecure-app",
+        "namespace": "insecure-app",
+        "description": "Container app uses the mutable tag app:latest with imagePullPolicy: Always, which makes deployments non-reproducible and exposes them to image tampering."
+      },
+      {
+        "type": "resource_limits",
+        "severity": "MEDIUM",
+        "resource_kind": "Deployment",
+        "resource_name": "insecure-app",
+        "namespace": "insecure-app",
+        "description": "Container app defines CPU and memory requests but no limits, allowing unbounded resource consumption on the node."
+      },
+      {
+        "type": "pod_security",
+        "severity": "HIGH",
+        "resource_kind": "Deployment",
+        "resource_name": "insecure-app",
+        "namespace": "insecure-app",
+        "description": "Pod spec has no securityContext, so no seccompProfile is set and container capabilities are not dropped."
+      },
+      {
+        "type": "pod_security",
+        "severity": "MEDIUM",
+        "resource_kind": "Deployment",
+        "resource_name": "insecure-app",
+        "namespace": "insecure-app",
+        "description": "Pod does not set automountServiceAccountToken: false, so the app-sa token is mounted into the container even though the application likely does not need API access."
+      }
+    ],
+    "summary": "The insecure-app workload in production has critical RBAC exposure through a wildcard ClusterRole bound to its ServiceAccount, plus missing network isolation, security context hardening, and resource limits.",
+    "fixes": [
+      {
+        "resource": "ClusterRole/admin-like-role",
+        "fix_type": "rbac",
+        "concrete_yaml": "# delete ClusterRole admin-like-role (wildcard * on * across all API groups)\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: app-minimal\n  namespace: insecure-app\nrules:\n- apiGroups: [\"\"]\n  resources: [\"configmaps\"]\n  verbs: [\"get\", \"list\"]",
+        "severity": "CRITICAL"
+      },
+      {
+        "resource": "ClusterRoleBinding/app-admin-binding",
+        "fix_type": "rbac",
+        "concrete_yaml": "# delete ClusterRoleBinding app-admin-binding\napiVersion: rbac.authorization.k8s.io/v1\nkind: RoleBinding\nmetadata:\n  name: app-minimal-binding\n  namespace: insecure-app\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: Role\n  name: app-minimal\nsubjects:\n- kind: ServiceAccount\n  name: app-sa\n  namespace: insecure-app",
+        "severity": "CRITICAL"
+      },
+      {
+        "resource": "insecure-app",
+        "fix_type": "network_policy",
+        "concrete_yaml": "apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: insecure-app\n  namespace: insecure-app\nspec:\n  podSelector:\n    matchLabels:\n      app: insecure-app\n  policyTypes: [\"Ingress\", \"Egress\"]\n  ingress:\n  - from:\n    - namespaceSelector:\n        matchLabels:\n          kubernetes.io/metadata.name: ingress-nginx\n    ports:\n    - protocol: TCP\n      port: 8080\n  egress:\n  - to:\n    - namespaceSelector: {}\n      podSelector:\n        matchLabels:\n          k8s-app: kube-dns\n    ports:\n    - protocol: UDP\n      port: 53\n    - protocol: TCP\n      port: 53",
+        "severity": "HIGH"
+      }
+    ],
+    "verdict": "ESCALATE",
+    "audit_trail": {
+      "workflow": "kubernetes",
+      "correlation_id": "1792990890134",
+      "timestamp_start": "2026-10-26T05:01:30.143Z",
+      "steps": [
+        {
+          "step": "agent1_kubernetes_analyzer",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T05:01:40.972Z",
+          "correlation_id": "1792990890134",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1564,
+          "output_tokens": 2468,
+          "total_tokens": 4032,
+          "cost_usd": 0.0111232,
+          "findings": {
+            "security_issues": [
+              {
+                "type": "rbac",
+                "severity": "CRITICAL",
+                "resource_kind": "ClusterRole",
+                "resource_name": "admin-like-role",
+                "namespace": "cluster-wide",
+                "description": "ClusterRole admin-like-role grants wildcard verbs (*) on wildcard resources (*) across all API groups (*), which is equivalent to cluster-admin."
+              },
+              {
+                "type": "rbac",
+                "severity": "CRITICAL",
+                "resource_kind": "ClusterRole",
+                "resource_name": "app-admin-binding",
+                "namespace": "cluster-wide",
+                "description": "ClusterRoleBinding app-admin-binding binds the cluster-admin-equivalent admin-like-role to ServiceAccount app-sa in namespace insecure-app, giving the application full control of the cluster."
+              },
+              {
+                "type": "rbac",
+                "severity": "HIGH",
+                "resource_kind": "ServiceAccount",
+                "resource_name": "app-sa",
+                "namespace": "insecure-app",
+                "description": "ServiceAccount app-sa is used by the workload with cluster-wide wildcard privileges and its API token is auto-mounted by default."
+              },
+              {
+                "type": "network_policy",
+                "severity": "HIGH",
+                "resource_kind": "NetworkPolicy",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "No NetworkPolicy exists in namespace insecure-app, so all ingress and egress traffic to and from the insecure-app Deployment is allowed by default."
+              },
+              {
+                "type": "security_context",
+                "severity": "HIGH",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Container app has no securityContext, so runAsNonRoot is not enforced and the image app:latest may run as root."
+              },
+              {
+                "type": "security_context",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Container app does not set readOnlyRootFilesystem, leaving the root filesystem writable."
+              },
+              {
+                "type": "security_context",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Container app does not set allowPrivilegeEscalation: false, so processes can gain more privileges than their parent."
+              },
+              {
+                "type": "security_context",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Container app uses the mutable tag app:latest with imagePullPolicy: Always, which makes deployments non-reproducible and exposes them to image tampering."
+              },
+              {
+                "type": "resource_limits",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Container app defines CPU and memory requests but no limits, allowing unbounded resource consumption on the node."
+              },
+              {
+                "type": "pod_security",
+                "severity": "HIGH",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Pod spec has no securityContext, so no seccompProfile is set and container capabilities are not dropped."
+              },
+              {
+                "type": "pod_security",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Pod does not set automountServiceAccountToken: false, so the app-sa token is mounted into the container even though the application likely does not need API access."
+              }
+            ],
+            "summary": "The insecure-app workload in production has critical RBAC exposure through a wildcard ClusterRole bound to its ServiceAccount, plus missing network isolation, security context hardening, and resource limits.",
+            "risk_level": "CRITICAL"
+          }
+        },
+        {
+          "step": "agent2_kubernetes_generator",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T05:01:49.937Z",
+          "correlation_id": "1792990890134",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 2440,
+          "output_tokens": 1844,
+          "total_tokens": 4284,
+          "cost_usd": 0.009328,
+          "fixes": {
+            "fixes": [
+              {
+                "resource": "ClusterRole/admin-like-role",
+                "fix_type": "rbac",
+                "concrete_yaml": "# delete ClusterRole admin-like-role (wildcard * on * across all API groups)\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: app-minimal\n  namespace: insecure-app\nrules:\n- apiGroups: [\"\"]\n  resources: [\"configmaps\"]\n  verbs: [\"get\", \"list\"]",
+                "severity": "CRITICAL"
+              },
+              {
+                "resource": "ClusterRoleBinding/app-admin-binding",
+                "fix_type": "rbac",
+                "concrete_yaml": "# delete ClusterRoleBinding app-admin-binding\napiVersion: rbac.authorization.k8s.io/v1\nkind: RoleBinding\nmetadata:\n  name: app-minimal-binding\n  namespace: insecure-app\nroleRef:\n  apiGroup: rbac.authorization.k8s.io\n  kind: Role\n  name: app-minimal\nsubjects:\n- kind: ServiceAccount\n  name: app-sa\n  namespace: insecure-app",
+                "severity": "CRITICAL"
+              },
+              {
+                "resource": "insecure-app",
+                "fix_type": "network_policy",
+                "concrete_yaml": "apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: insecure-app\n  namespace: insecure-app\nspec:\n  podSelector:\n    matchLabels:\n      app: insecure-app\n  policyTypes: [\"Ingress\", \"Egress\"]\n  ingress:\n  - from:\n    - namespaceSelector:\n        matchLabels:\n          kubernetes.io/metadata.name: ingress-nginx\n    ports:\n    - protocol: TCP\n      port: 8080\n  egress:\n  - to:\n    - namespaceSelector: {}\n      podSelector:\n        matchLabels:\n          k8s-app: kube-dns\n    ports:\n    - protocol: UDP\n      port: 53\n    - protocol: TCP\n      port: 53",
+                "severity": "HIGH"
+              }
+            ]
+          }
+        },
+        {
+          "step": "agent3_kubernetes_reviewer_attempt_1",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T05:01:54.232Z",
+          "correlation_id": "1792990890134",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 3192,
+          "output_tokens": 526,
+          "total_tokens": 3718,
+          "cost_usd": 0.0046576,
+          "verdict": "ESCALATE",
+          "review": {
+            "verdict": "ESCALATE",
+            "reasoning": "This is a production environment, and the proposed fixes are not safe to apply as written: the ClusterRole and ClusterRoleBinding removals exist only as YAML comments while the manifests create a namespaced Role and RoleBinding, so the wildcard cluster-admin-equivalent binding would remain unless deleted manually; the NetworkPolicy's egress allows DNS but no other traffic the app may need, such as the Kubernetes API or external dependencies; and the 8 security_context, resource_limits, and automountServiceAccountToken findings for Deployment/insecure-app have no fixes at all."
+          }
+        }
+      ],
+      "status": "ESCALATE",
+      "total_tokens": 12034,
+      "total_cost": 0.0251088,
+      "final_risk_level": "CRITICAL",
+      "timestamp_end": "2026-10-26T05:01:54.232Z"
+    }
+  },
+  "escalation_info": {
+    "shouldEscalate": true,
+    "reasons": [
+      "kubernetes: Risk level is CRITICAL",
+      "kubernetes: HIGH risk in production environment",
+      "kubernetes: 2 wildcard RBAC binding(s) detected",
+      "kubernetes: Reviewer verdict is ESCALATE"
+    ],
+    "recommendation": "HUMAN_REVIEW_REQUIRED"
+  },
+  "substance_level": "core",
+  "final_status": "ESCALATED",
+  "report": "# Infrastructure & Security Review Report\n\n**Combined Risk Level**: CRITICAL\n\n## Container Security (Kubernetes) Findings\n\n**Risk Level**: CRITICAL\n\nThe insecure-app workload in production has critical RBAC exposure through a wildcard ClusterRole bound to its ServiceAccount, plus missing network isolation, security context hardening, and resource limits.\n\n### Security Issues\n- **admin-like-role** (ClusterRole, CRITICAL)\n  - Issue: ClusterRole admin-like-role grants wildcard verbs (*) on wildcard resources (*) across all API groups (*), which is equivalent to cluster-admin.\n- **app-admin-binding** (ClusterRole, CRITICAL)\n  - Issue: ClusterRoleBinding app-admin-binding binds the cluster-admin-equivalent admin-like-role to ServiceAccount app-sa in namespace insecure-app, giving the application full control of the cluster.\n- **app-sa** (ServiceAccount, HIGH)\n  - Issue: ServiceAccount app-sa is used by the workload with cluster-wide wildcard privileges and its API token is auto-mounted by default.\n- **insecure-app** (NetworkPolicy, HIGH)\n  - Issue: No NetworkPolicy exists in namespace insecure-app, so all ingress and egress traffic to and from the insecure-app Deployment is allowed by default.\n- **insecure-app** (Deployment, HIGH)\n  - Issue: Container app has no securityContext, so runAsNonRoot is not enforced and the image app:latest may run as root.\n- **insecure-app** (Deployment, MEDIUM)\n  - Issue: Container app does not set readOnlyRootFilesystem, leaving the root filesystem writable.\n- **insecure-app** (Deployment, MEDIUM)\n  - Issue: Container app does not set allowPrivilegeEscalation: false, so processes can gain more privileges than their parent.\n- **insecure-app** (Deployment, MEDIUM)\n  - Issue: Container app uses the mutable tag app:latest with imagePullPolicy: Always, which makes deployments non-reproducible and exposes them to image tampering.\n- **insecure-app** (Deployment, MEDIUM)\n  - Issue: Container app defines CPU and memory requests but no limits, allowing unbounded resource consumption on the node.\n- **insecure-app** (Deployment, HIGH)\n  - Issue: Pod spec has no securityContext, so no seccompProfile is set and container capabilities are not dropped.\n- **insecure-app** (Deployment, MEDIUM)\n  - Issue: Pod does not set automountServiceAccountToken: false, so the app-sa token is mounted into the container even though the application likely does not need API access.\n\n## Synthesis & Recommendations\n\n# Infrastructure Security Report: Insecure-App Production Workload\n\n## Executive Summary\n\nThis report covers the Kubernetes Security Review (Container Security) of the `insecure-app` workload in production, which ran as correlation ID `1792990890134` on 2026-10-26. The review found a **CRITICAL** combined risk. The `app-sa` ServiceAccount holds cluster-admin-equivalent privileges through the wildcard ClusterRole `admin-like-role`, bound by the ClusterRoleBinding `app-admin-binding`, so a compromise of the application would give an attacker full control of the cluster. The workload also has no NetworkPolicy, no security context hardening, and no resource limits. The reviewer issued an **ESCALATE** verdict because the proposed fixes are not safe to apply as written. The RBAC deletions exist only as YAML comments, the NetworkPolicy egress rules are likely too restrictive, and several hardening findings have no fixes. Immediate action is needed on the RBAC exposure, and a human owner should validate the remediation plan before any change reaches production.\n\n---\n\n## Findings by Domain\n\n## Container Security (Kubernetes) Findings\n\nRisk Level: **CRITICAL**\n\nThe `insecure-app` workload in production has critical RBAC exposure through a wildcard ClusterRole bound to its ServiceAccount, plus missing network isolation, security context hardening, and resource limits.\n\n### RBAC Issues\n\n❌ **CRITICAL**: ClusterRole `admin-like-role` grants cluster-admin equivalence.\n   - **Resource**: ClusterRole `admin-like-role` (cluster-wide)\n   - **Issue**: Grants wildcard verbs (`*`) on wildcard resources (`*`) across all API groups (`*`).\n   - **Impact**: Any principal bound to this role can read or modify every resource in the cluster, including Secrets in all namespaces. Compromise of the application yields full cluster control.\n   - **Fix needed**: Delete the ClusterRole after confirming no other bindings reference it. Replace it with a namespaced Role scoped to the workload's actual needs.\n\n❌ **CRITICAL**: ClusterRoleBinding `app-admin-binding` binds the admin-equivalent role to the application.\n   - **Resource**: ClusterRoleBinding `app-admin-binding`\n   - **Issue**: Binds `admin-like-role` to ServiceAccount `app-sa` in namespace `insecure-app`, granting cluster-wide access.\n   - **Impact**: The application runs with full control of the cluster. This is the direct path from a container compromise to cluster takeover.\n   - **Fix needed**: Delete the ClusterRoleBinding. The proposed fix only includes this deletion as a YAML comment, so it must be run manually with `kubectl delete clusterrolebinding app-admin-binding`.\n\n⚠️ **HIGH**: ServiceAccount `app-sa` carries excessive privileges and auto-mounts its token.\n   - **Resource**: ServiceAccount `app-sa` (namespace `insecure-app`)\n   - **Issue**: Used by the workload with cluster-wide wildcard privileges, and its API token is auto-mounted by default.\n   - **Impact**: The token gives any attacker who reaches the container an authenticated identity with cluster-wide reach.\n   - **Fix needed**: Reduce the permissions to a namespaced Role (see Unified Recommendations) and disable token auto-mounting at the ServiceAccount and Pod level.\n\n### Network Policies\n\n⚠️ **HIGH**: No NetworkPolicy exists in namespace `insecure-app`.\n   - **Namespace**: `insecure-app`\n   - **Policy gap**: All ingress and egress traffic to and from the `insecure-app` Deployment is allowed by default.\n   - **Impact**: Any pod in the cluster can reach the application, and the application can reach any destination, including the Kubernetes API, other namespaces, and external endpoints. This allows lateral movement and data exfiltration.\n   - **Fix needed**: Apply a default-deny NetworkPolicy with explicit allow rules. The proposed policy `insecure-app` is a starting point but needs revision (see Unified Recommendations).\n\n### Security Contexts\n\n⚠️ **HIGH**: Container `app` has no securityContext.\n   - **Resource**: Deployment `insecure-app`, container `app` (image `app:latest`)\n   - **Missing settings**: `runAsNonRoot: true`, `runAsUser`, and `allowPrivilegeEscalation: false`.\n   - **Impact**: The image may run as root. Root in a container, combined with a writable filesystem and no privilege restrictions, makes container escape and host compromise easier.\n\n⚠️ **MEDIUM**: Root filesystem is writable.\n   - **Resource**: Deployment `insecure-app`, container `app`\n   - **Missing settings**: `readOnlyRootFilesystem: true`\n   - **Impact**: An attacker can write malware, modify binaries, or persist changes inside the container.\n\n⚠️ **MEDIUM**: Privilege escalation is not blocked.\n   - **Resource**: Deployment `insecure-app`, container `app`\n   - **Missing settings**: `allowPrivilegeEscalation: false`\n   - **Impact**: Processes can gain more privileges than their parent, for example through setuid binaries.\n\n⚠️ **MEDIUM**: Mutable image tag with `imagePullPolicy: Always`.\n   - **Resource**: Deployment `insecure-app`, image `app:latest`\n   - **Impact**: Deployments are not reproducible, and a tampered or unintended image at the tag is pulled automatically on every restart.\n   - **Fix needed**: Pin the image to an immutable version tag or digest.\n\n### Resource Limits\n\n⚠️ **MEDIUM**: Container `app` has requests but no limits.\n   - **Resource**: Deployment `insecure-app`, container `app`\n   - **Missing settings**: CPU and memory `limits`\n   - **Impact**: The container can consume unbounded node resources, which risks noisy-neighbor outages and node instability.\n\n### Pod Security\n\n⚠️ **HIGH**: No Pod-level securityContext, seccomp profile, or capability drops.\n   - **Resource**: Deployment `insecure-app`, Pod spec\n   - **Missing settings**: `seccompProfile: {type: RuntimeDefault}`, `capabilities: {drop: [\"ALL\"]}`\n   - **Impact**: The container runs with the default, broader syscall and capability set, which increases the attack surface.\n\n⚠️ **MEDIUM**: ServiceAccount token is mounted into the container.\n   - **Resource**: Deployment `insecure-app`, Pod spec, ServiceAccount `app-sa`\n   - **Missing settings**: `automountServiceAccountToken: false`\n   - **Impact**: The `app-sa` token is available to the application even though it likely does not need Kubernetes API access. Any code execution in the container can use it.\n\n### Verdict: ESCALATE\n\nThe reviewer escalated this report to a human because the proposed fixes are not safe to apply as written.\n\n- **RBAC fixes are incomplete.** The deletions of `ClusterRole/admin-like-role` and `ClusterRoleBinding/app-admin-binding` appear only as YAML comments. The generated manifests create a namespaced `Role` and `RoleBinding`, so the cluster-admin-equivalent binding would remain in place unless it is deleted manually.\n- **NetworkPolicy egress is likely too restrictive.** The proposed egress rule allows only DNS (UDP/TCP 53). It does not allow the Kubernetes API or external dependencies the application may need, so applying it could cause an outage. The ingress rule also assumes the ingress controller runs in the `ingress-nginx` namespace and that the application listens on port 8080. Neither assumption was verified.\n- **Hardening findings have no fixes.** Seven findings for `Deployment/insecure-app` have no remediation: four security context findings, one resource limits finding, and two pod security findings. The reviewer's text cites eight, but the analyzer output contains seven.\n\n---\n\n## Unified Recommendations\n\nRecommendations are ordered by priority. Items marked **Validate first** require confirmation by the\n\n---\n\n*Report generated by Stage 5 Multi-Workflow Coordinator System*\n",
+  "timestamp": "2026-10-26T05:02:12.298Z"
+}

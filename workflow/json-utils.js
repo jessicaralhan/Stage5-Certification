@@ -1,5 +1,4 @@
-// JSON utility functions shared across workflow executors
-
+// Shared JSON extraction utility - used by all executors
 function extractJSON(text) {
   // Remove markdown code fences if present
   let cleaned = text.replace(/```(json)?\s*/g, '').replace(/```\s*/g, '');

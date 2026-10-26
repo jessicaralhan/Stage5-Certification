@@ -11,7 +11,6 @@ function loadPrompt(name) {
   return fs.readFileSync(path.join(__dirname, `../prompts/${name}`), 'utf-8');
 }
 
-// Validate Agent 2 generator output for concreteness (Kubernetes)
 function validateGeneratorConcreteness(fixes) {
   const placeholderPatterns = /\[.*?\]|<.*?>|todo|tbd|fixme|placeholder|xxx/gi;
 

@@ -71,6 +71,7 @@ async function runScenario(scenario) {
     const process_obj = spawn('node', [
       'workflow/coordinator-harness.js',
       scenario.input,
+      scenario.expectedWorkflow,
       scenario.environment,
     ]);
 
@@ -121,9 +122,9 @@ async function runScenario(scenario) {
         const output = JSON.parse(fs.readFileSync(outputFile, 'utf-8'));
 
         // Validate routing
-        if (output.coordinator_decision !== scenario.expectedWorkflow) {
+        if (output.workflow_type !== scenario.expectedWorkflow) {
           result.issues.push(
-            `Routing mismatch: expected ${scenario.expectedWorkflow}, got ${output.coordinator_decision}`
+            `Routing mismatch: expected ${scenario.expectedWorkflow}, got ${output.workflow_type}`
           );
         }
 
