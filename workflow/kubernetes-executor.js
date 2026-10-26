@@ -49,6 +49,8 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
     total_cost: 0,
   };
 
+  let agent1Findings;
+
   try {
     // Step 1: Agent 1 - Manifest Analyzer
     process.stdout.write('  → Agent 1B: Analyzing Kubernetes manifests...\n');
@@ -65,7 +67,6 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
     });
 
     // Parse Agent 1 output
-    let agent1Findings;
     try {
       const jsonStr1 = extractJSON(agent1Response.text);
       agent1Findings = JSON.parse(jsonStr1);
@@ -138,12 +139,8 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
       throw new Error('Agent 2 output missing fixes array');
     }
 
-    // Validate Agent 2 output for concreteness (warnings only - prompts enforce this)
-    try {
-      validateGeneratorConcreteness(agent2Fixes);
-    } catch (err) {
-      process.stdout.write(`    ⚠ Concreteness check: ${err.message}\n`);
-    }
+    // Validate Agent 2 output for concreteness (guardrail enforcement)
+    validateGeneratorConcreteness(agent2Fixes);
 
     const agent2Cost = calculateCost(agent2Response.model, agent2Response.inputTokens, agent2Response.outputTokens);
     const agent2TotalTokens = agent2Response.inputTokens + agent2Response.outputTokens;
@@ -178,6 +175,7 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
       const agent3Prompt = loadPrompt('workflow2-kubernetes-reviewer.md');
 
       let agent3Input = agent3Prompt
+        .replace('{{manifests}}', manifestContent)
         .replace('{{findings}}', JSON.stringify(agent1Findings, null, 2))
         .replace('{{fixes}}', JSON.stringify(currentFixes, null, 2))
         .replace('{{environment}}', environment);
@@ -252,6 +250,8 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
           if (!currentFixes.fixes || !Array.isArray(currentFixes.fixes)) {
             throw new Error('Agent 2 revision output missing fixes array');
           }
+          // Validate concreteness of revised fixes (guardrail enforcement)
+          validateGeneratorConcreteness(currentFixes);
         } catch (err) {
           throw new Error(`Agent 2 revision output not valid JSON: ${err.message}`);
         }
@@ -300,18 +300,18 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
     audit.error = err.message;
     return {
       workflow: 'kubernetes',
-      risk_level: 'UNKNOWN',
-      security_issues: [],
-      summary: `Error during analysis: ${err.message}`,
+      risk_level: agent1Findings?.risk_level || 'UNKNOWN',
+      security_issues: agent1Findings?.security_issues || [],
+      summary: agent1Findings?.summary || 'No significant security issues found',
       remediations: [],
-      verdict: 'ERROR',
+      verdict: 'ESCALATE',
       audit_trail: audit,
     };
   }
 }
 
 async function run(inputFile, environment, correlationId) {
-  const content = fs.readFileSync(inputFile, 'utf-8');
+  const content = await fs.promises.readFile(inputFile, 'utf-8');
   return runKubernetesWorkflow(content, environment, correlationId);
 }
 

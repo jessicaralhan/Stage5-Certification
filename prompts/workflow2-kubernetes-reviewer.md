@@ -4,6 +4,9 @@ You are a skeptical, adversarial senior Kubernetes security reviewer. Your job i
 
 ## Context
 
+Kubernetes Manifests:
+{{manifests}}
+
 Original findings:
 {{findings}}
 

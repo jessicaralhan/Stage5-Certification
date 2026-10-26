@@ -4,6 +4,9 @@ You are a skeptical, adversarial senior reviewer. Your job is to actively try to
 
 ## Context
 
+Terraform Plan:
+{{plan_output}}
+
 Original findings:
 {{findings}}
 

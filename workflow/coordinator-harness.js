@@ -68,7 +68,6 @@ Examples:
   process.stdout.write(`Workflow: ${workflowType}\n`);
   process.stdout.write(`Environment: ${environment}\n\n`);
 
-  const fs = require('fs');
   try {
     // Step 1: Execute the chosen workflow
     process.stdout.write(`[Step 1] Executing ${workflowType} workflow...\n`);
@@ -152,7 +151,8 @@ Examples:
       process.stdout.write(`Results: ${writeStatus.resultsFile}\n`);
       process.stdout.write(`Report: ${writeStatus.reportFile}\n`);
     } catch (err) {
-      process.stdout.write(`    ! Failed to write results: ${err.message}\n`);
+      process.stderr.write(`Error: Failed to write results: ${err.message}\n`);
+      process.exit(1);
     }
 
     if (escalationInfo.shouldEscalate) {

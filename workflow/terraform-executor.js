@@ -51,6 +51,8 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
     total_cost: 0,
   };
 
+  let agent1Findings;
+
   try {
     // Step 1: Agent 1 - Plan Analyzer
     process.stdout.write('  → Agent 1: Analyzing Terraform plan...\n');
@@ -66,7 +68,6 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
       maxTokens: 3000,
     });
 
-    let agent1Findings;
     try {
       const jsonStr1 = extractJSON(agent1Response.text);
       agent1Findings = JSON.parse(jsonStr1);
@@ -140,12 +141,8 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
       throw new Error('Agent 2 output missing remediations array');
     }
 
-    // Validate Agent 2 output for concreteness (warnings only - prompts enforce this)
-    try {
-      validateGeneratorConcreteness(agent2Remediations);
-    } catch (err) {
-      process.stdout.write(`    ⚠ Concreteness check: ${err.message}\n`);
-    }
+    // Validate Agent 2 output for concreteness (guardrail enforcement)
+    validateGeneratorConcreteness(agent2Remediations);
 
     const agent2Cost = calculateCost(agent2Response.model, agent2Response.inputTokens, agent2Response.outputTokens);
     const agent2TotalTokens = agent2Response.inputTokens + agent2Response.outputTokens;
@@ -180,8 +177,9 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
       const agent3Prompt = loadPrompt('workflow1-terraform-reviewer.md');
 
       let agent3Input = agent3Prompt
+        .replace('{{plan_output}}', planContent)
         .replace('{{findings}}', JSON.stringify(agent1Findings, null, 2))
-        .replace('{{fixes}}', JSON.stringify(currentRemediations, null, 2))
+        .replace('{{remediations}}', JSON.stringify(currentRemediations, null, 2))
         .replace('{{environment}}', environment);
 
       // On retry attempts, append previous reviewer feedback for Agent 3 to re-examine
@@ -254,6 +252,8 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
           if (!currentRemediations.remediations || !Array.isArray(currentRemediations.remediations)) {
             throw new Error('Agent 2 revision output missing remediations array');
           }
+          // Validate concreteness of revised remediations (guardrail enforcement)
+          validateGeneratorConcreteness(currentRemediations);
         } catch (err) {
           throw new Error(`Agent 2 revision output not valid JSON: ${err.message}`);
         }
@@ -305,19 +305,19 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
     audit.error = err.message;
     return {
       workflow: 'terraform',
-      risk_level: 'UNKNOWN',
-      destructive_changes: [],
-      security_exposure: [],
-      cost_notes: [],
+      risk_level: agent1Findings?.risk_level || 'UNKNOWN',
+      destructive_changes: agent1Findings?.destructive_changes || [],
+      security_exposure: agent1Findings?.security_exposure || [],
+      cost_notes: agent1Findings?.cost_notes || [],
       remediations: [],
-      verdict: 'ERROR',
+      verdict: 'ESCALATE',
       audit_trail: audit,
     };
   }
 }
 
 async function run(inputFile, environment, correlationId) {
-  const content = fs.readFileSync(inputFile, 'utf-8');
+  const content = await fs.promises.readFile(inputFile, 'utf-8');
   return runTerraformWorkflow(content, environment, correlationId);
 }
 

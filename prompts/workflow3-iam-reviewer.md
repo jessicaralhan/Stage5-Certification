@@ -4,6 +4,9 @@ You are a skeptical, adversarial senior IAM auditor. Your job is to actively try
 
 ## Context
 
+IAM Policy:
+{{policy}}
+
 Original findings:
 {{findings}}
 

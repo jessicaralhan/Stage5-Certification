@@ -116,7 +116,10 @@ function calculateCost(model, inputTokens, outputTokens) {
       output: 4.00 / 1000000, // $4.00 per 1M output tokens
     },
   };
-  const rate = pricingTable[model] || pricingTable['claude-haiku-4-5-20251001'];
+  if (!pricingTable[model]) {
+    throw new Error(`Model ${model} not found in pricing table. Supported models: ${Object.keys(pricingTable).join(', ')}`);
+  }
+  const rate = pricingTable[model];
   const cost = inputTokens * rate.input + outputTokens * rate.output;
   return Math.round(cost * 100000000) / 100000000; // Round to 8 decimals
 }

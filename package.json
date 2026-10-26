@@ -4,7 +4,7 @@
   "description": "Stage 5: Multi-Workflow Coordinator System",
   "main": "workflow/orchestrator.js",
   "scripts": {
-    "test": "node workflow/workflow.test.js",
+    "test": "node workflow/integration-test.js",
     "test:k8s": "promptfoo eval -c evals/workflow2-kubernetes.yaml",
     "test:iam": "promptfoo eval -c evals/workflow3-iam.yaml",
     "test:terraform": "promptfoo eval -c evals/workflow1-terraform.yaml"
