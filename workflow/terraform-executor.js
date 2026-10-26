@@ -62,7 +62,7 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
 
     const agent1Response = await callClaude({
       user: agent1Input,
-      model: 'claude-haiku-5-5',
+      model: 'claude-haiku-4-5-20251001',
       maxTokens: 3000,
     });
 
@@ -120,7 +120,7 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
 
     const agent2Response = await callClaude({
       user: agent2Input,
-      model: 'claude-haiku-5-5',
+      model: 'claude-haiku-4-5-20251001',
       maxTokens: 3000,
     });
 
@@ -188,7 +188,7 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
 
       const agent3Response = await callClaude({
         user: agent3Input,
-        model: 'claude-haiku-5-5',
+        model: 'claude-haiku-4-5-20251001',
         maxTokens: 3000,
       });
 
@@ -241,7 +241,7 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
 
         const agent2ReviseResponse = await callClaude({
           user: agent2ReviseInput,
-          model: 'claude-haiku-5-5',
+          model: 'claude-haiku-4-5-20251001',
           maxTokens: 3000,
         });
 

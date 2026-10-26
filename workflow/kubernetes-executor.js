@@ -60,7 +60,7 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
 
     const agent1Response = await callClaude({
       user: agent1Input,
-      model: 'claude-haiku-5-5',
+      model: 'claude-haiku-4-5-20251001',
       maxTokens: 4000,
     });
 
@@ -102,7 +102,7 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
         risk_level: 'LOW',
         security_issues: agent1Findings.security_issues || [],
         summary: agent1Findings.summary || 'No significant security issues found',
-        fixes: [],
+        remediations: [],
         verdict: 'APPROVE',
         audit_trail: audit,
       };
@@ -118,7 +118,7 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
 
     const agent2Response = await callClaude({
       user: agent2Input,
-      model: 'claude-haiku-5-5',
+      model: 'claude-haiku-4-5-20251001',
       maxTokens: 3000,
     });
 
@@ -186,7 +186,7 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
 
       const agent3Response = await callClaude({
         user: agent3Input,
-        model: 'claude-haiku-5-5',
+        model: 'claude-haiku-4-5-20251001',
         maxTokens: 3000,
       });
 
@@ -239,7 +239,7 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
 
         const agent2ReviseResponse = await callClaude({
           user: agent2ReviseInput,
-          model: 'claude-haiku-5-5',
+          model: 'claude-haiku-4-5-20251001',
           maxTokens: 3000,
         });
 
@@ -287,7 +287,7 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
       risk_level: agent1Findings.risk_level,
       security_issues: agent1Findings.security_issues,
       summary: agent1Findings.summary,
-      fixes: currentFixes.fixes,
+      remediations: currentFixes.fixes,
       verdict: agent3Review.verdict,
       audit_trail: audit,
     };
@@ -300,7 +300,7 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
       risk_level: 'UNKNOWN',
       security_issues: [],
       summary: `Error during analysis: ${err.message}`,
-      fixes: [],
+      remediations: [],
       verdict: 'ERROR',
       audit_trail: audit,
     };
