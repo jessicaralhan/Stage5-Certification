@@ -5,10 +5,10 @@
 
 require('dotenv').config({ override: true });
 
-const fs = require('fs');
 const path = require('path');
 const { generateReport } = require('./report-writer-executor');
 const { determineEscalation, assessSubstance } = require('./escalation-gates');
+const { writeResults } = require('./results-writer');
 
 // Workflow dispatcher tools
 const WORKFLOWS = {
@@ -56,11 +56,6 @@ Examples:
   const workflowType = args[1];
   const environment = args[2] || 'non-production';
 
-  if (!fs.existsSync(inputFile)) {
-    process.stderr.write(`Error: File not found: ${inputFile}\n`);
-    process.exit(1);
-  }
-
   // Validate workflow type
   if (!['terraform', 'kubernetes', 'iam'].includes(workflowType)) {
     process.stderr.write(`Error: Invalid workflow type: ${workflowType}\n`);
@@ -73,21 +68,17 @@ Examples:
   process.stdout.write(`Workflow: ${workflowType}\n`);
   process.stdout.write(`Environment: ${environment}\n\n`);
 
+  const fs = require('fs');
   try {
-    // Step 1: Validate input file
-    process.stdout.write(`[Step 1] Validating input file...\n`);
-    const fileSize = fs.statSync(inputFile).size;
-    process.stdout.write(`    ✓ Input file exists (${fileSize} bytes)\n`);
-
-    // Step 2: Execute the chosen workflow
-    process.stdout.write(`[Step 2] Executing ${workflowType} workflow...\n`);
+    // Step 1: Execute the chosen workflow
+    process.stdout.write(`[Step 1] Executing ${workflowType} workflow...\n`);
     const runId = `${Date.now()}`;
     const workflowResult = await executeWorkflow(workflowType, inputFile, environment, runId);
 
-    process.stdout.write(`[Step 2] Workflow complete. Risk level: ${workflowResult.risk_level}\n`);
+    process.stdout.write(`    ✓ Workflow complete. Risk level: ${workflowResult.risk_level}\n`);
 
-    // Step 3: Check escalation gates
-    process.stdout.write(`[Step 3] Checking escalation gates...\n`);
+    // Step 2: Check escalation gates
+    process.stdout.write(`[Step 2] Checking escalation gates...\n`);
 
     const workflowFindings = {};
     workflowFindings[workflowType] = workflowResult;
@@ -115,8 +106,8 @@ Examples:
       });
     }
 
-    // Step 4: Generate report (using Report Writer agent)
-    process.stdout.write(`[Step 4] Generating unified report...\n`);
+    // Step 3: Generate report (using Report Writer agent)
+    process.stdout.write(`[Step 3] Generating unified report...\n`);
 
     let report;
     try {
@@ -126,8 +117,8 @@ Examples:
       report = fallbackReportGeneration(workflowType, workflowResult);
     }
 
-    // Step 5: Determine final status
-    process.stdout.write(`[Step 5] Determining final status...\n`);
+    // Step 4: Determine final status
+    process.stdout.write(`[Step 4] Determining final status...\n`);
 
     let finalStatus = 'APPROVED';
     if (escalationInfo.shouldEscalate) {
@@ -137,14 +128,7 @@ Examples:
       process.stdout.write(`    ✓ Auto-approved (no escalation criteria met)\n`);
     }
 
-    // Step 6: Output results
-    process.stdout.write(`[Step 6] Writing results...\n`);
-
-    const resultsDir = path.join(__dirname, '../results');
-    if (!fs.existsSync(resultsDir)) {
-      fs.mkdirSync(resultsDir, { recursive: true });
-    }
-
+    // Construct final output (caller is responsible for persisting)
     const finalOutput = {
       run_id: runId,
       workflow_type: workflowType,
@@ -158,18 +142,18 @@ Examples:
       timestamp: new Date().toISOString(),
     };
 
-    const resultsFile = path.join(resultsDir, `run-${runId}-output.json`);
-    fs.writeFileSync(resultsFile, JSON.stringify(finalOutput, null, 2));
-
-    // Also write report as separate markdown file
-    const reportFile = path.join(resultsDir, `run-${runId}-report.md`);
-    fs.writeFileSync(reportFile, report);
-
     process.stdout.write(`\n=== Orchestration Complete ===\n`);
     process.stdout.write(`Status: ${finalStatus}\n`);
     process.stdout.write(`Run ID: ${runId}\n`);
-    process.stdout.write(`Results: ${resultsFile}\n`);
-    process.stdout.write(`Report: ${reportFile}\n`);
+
+    // Persist results to disk
+    try {
+      const writeStatus = await writeResults(finalOutput, runId);
+      process.stdout.write(`Results: ${writeStatus.resultsFile}\n`);
+      process.stdout.write(`Report: ${writeStatus.reportFile}\n`);
+    } catch (err) {
+      process.stdout.write(`    ! Failed to write results: ${err.message}\n`);
+    }
 
     if (escalationInfo.shouldEscalate) {
       process.stdout.write(`\nNext step: Review findings and make a decision\n`);
