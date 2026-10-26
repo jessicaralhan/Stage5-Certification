@@ -1,0 +1,258 @@
+{
+  "run_id": "1792995545391",
+  "workflow_type": "iam",
+  "workflow_executed": "iam",
+  "environment": "production",
+  "workflow_findings": {
+    "workflow": "iam",
+    "risk_level": "CRITICAL",
+    "access_issues": [
+      {
+        "type": "overly_broad_permissions",
+        "severity": "CRITICAL",
+        "affected_principals": [
+          "Principal attached to statement AllowEverything (not identified in the policy document)"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "Statement AllowEverything grants Action \"*\" on Resource \"*\", which permits every API action across all AWS services, including IAM privilege escalation and destructive operations."
+      },
+      {
+        "type": "missing_resource_boundaries",
+        "severity": "CRITICAL",
+        "affected_principals": [
+          "Principal attached to statement AllowEverything (not identified in the policy document)"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "Resource \"*\" applies all permissions to every resource in the production account, with no ARN scoping for data stores, encryption keys, or security groups."
+      },
+      {
+        "type": "missing_mfa",
+        "severity": "CRITICAL",
+        "affected_principals": [
+          "Principal attached to statement AllowEverything (not identified in the policy document)"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "Statement AllowEverything has no aws:MultiFactorAuthPresent condition, so create, delete, and modify actions (including iam:*) are allowed without MFA."
+      },
+      {
+        "type": "missing_conditions",
+        "severity": "HIGH",
+        "affected_principals": [
+          "Principal attached to statement AllowEverything (not identified in the policy document)"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "Statement AllowEverything has no IP range, time-of-day, source VPC/endpoint, or principal-tag conditions, so access is unrestricted by origin or context."
+      },
+      {
+        "type": "session_ttl",
+        "severity": "MEDIUM",
+        "affected_principals": [
+          "Principal attached to statement AllowEverything (not identified in the policy document)"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "The policy document sets no session constraints (such as aws:MultiFactorAuthAge or a bounded role session duration), so any credentials that use it may remain valid for the maximum duration."
+      },
+      {
+        "type": "unused_role",
+        "severity": "LOW",
+        "affected_principals": [
+          "Principal attached to statement AllowEverything (not identified in the policy document)"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "The policy document does not identify any role or user it is bound to, so its actual usage and need cannot be verified and it should be confirmed or removed."
+      }
+    ],
+    "summary": "The production policy grants unrestricted administrative access to all actions and resources with no MFA, conditions, or session limits, which is a critical least-privilege failure.",
+    "fixes": [
+      {
+        "issue": "AllowEverything grants Action \"*\" on Resource \"*\", enabling all API actions including IAM escalation and destructive operations",
+        "fix_type": "permission_narrowing",
+        "concrete_policy_change": "Replace \"Action\": \"*\" with \"Action\": [\"s3:GetObject\",\"s3:PutObject\",\"s3:ListBucket\",\"dynamodb:GetItem\",\"dynamodb:PutItem\",\"dynamodb:Query\",\"kms:Decrypt\",\"kms:GenerateDataKey\",\"logs:CreateLogStream\",\"logs:PutLogEvents\"]. Preserves app read/write to data, DynamoDB item access, encryption/decryption, and log writing. IAM, delete, and admin actions are denied by default.",
+        "severity": "CRITICAL"
+      },
+      {
+        "issue": "AllowEverything uses Resource \"*\", applying permissions to every resource in the production account including data stores and KMS keys",
+        "fix_type": "resource_scoping",
+        "concrete_policy_change": "Replace \"Resource\": \"*\" with \"Resource\": [\"arn:aws:s3:::prod-app-data\",\"arn:aws:s3:::prod-app-data/*\",\"arn:aws:dynamodb:us-east-1:111122223333:table/prod-app-orders\",\"arn:aws:kms:us-east-1:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\"arn:aws:logs:us-east-1:111122223333:log-group:/prod/app:*\"]. Preserves access to the named bucket, table, key, and log group only. Other resources in the account become inaccessible.",
+        "severity": "CRITICAL"
+      },
+      {
+        "issue": "AllowEverything has no aws:MultiFactorAuthPresent condition, so create, modify, and delete actions succeed without MFA",
+        "fix_type": "mfa_requirement",
+        "concrete_policy_change": "Add \"Condition\": {\"Bool\": {\"aws:MultiFactorAuthPresent\": \"true\"}, \"NumericLessThan\": {\"aws:MultiFactorAuthAge\": \"3600\"}} to the scoped statement, and keep service or workload roles in a separate statement without this condition. Human sessions must then use MFA with credentials under 1 hour old. Automated workloads are unaffected.",
+        "severity": "CRITICAL"
+      }
+    ],
+    "verdict": "ESCALATE",
+    "audit_trail": {
+      "workflow": "iam",
+      "correlation_id": "1792995545391",
+      "timestamp_start": "2026-10-26T06:19:05.399Z",
+      "steps": [
+        {
+          "step": "agent1_iam_analyzer",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T06:19:15.428Z",
+          "correlation_id": "1792995545391",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1238,
+          "output_tokens": 1512,
+          "total_tokens": 2750,
+          "cost_usd": 0.0070384,
+          "findings": {
+            "access_issues": [
+              {
+                "type": "overly_broad_permissions",
+                "severity": "CRITICAL",
+                "affected_principals": [
+                  "Principal attached to statement AllowEverything (not identified in the policy document)"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "Statement AllowEverything grants Action \"*\" on Resource \"*\", which permits every API action across all AWS services, including IAM privilege escalation and destructive operations."
+              },
+              {
+                "type": "missing_resource_boundaries",
+                "severity": "CRITICAL",
+                "affected_principals": [
+                  "Principal attached to statement AllowEverything (not identified in the policy document)"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "Resource \"*\" applies all permissions to every resource in the production account, with no ARN scoping for data stores, encryption keys, or security groups."
+              },
+              {
+                "type": "missing_mfa",
+                "severity": "CRITICAL",
+                "affected_principals": [
+                  "Principal attached to statement AllowEverything (not identified in the policy document)"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "Statement AllowEverything has no aws:MultiFactorAuthPresent condition, so create, delete, and modify actions (including iam:*) are allowed without MFA."
+              },
+              {
+                "type": "missing_conditions",
+                "severity": "HIGH",
+                "affected_principals": [
+                  "Principal attached to statement AllowEverything (not identified in the policy document)"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "Statement AllowEverything has no IP range, time-of-day, source VPC/endpoint, or principal-tag conditions, so access is unrestricted by origin or context."
+              },
+              {
+                "type": "session_ttl",
+                "severity": "MEDIUM",
+                "affected_principals": [
+                  "Principal attached to statement AllowEverything (not identified in the policy document)"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "The policy document sets no session constraints (such as aws:MultiFactorAuthAge or a bounded role session duration), so any credentials that use it may remain valid for the maximum duration."
+              },
+              {
+                "type": "unused_role",
+                "severity": "LOW",
+                "affected_principals": [
+                  "Principal attached to statement AllowEverything (not identified in the policy document)"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "The policy document does not identify any role or user it is bound to, so its actual usage and need cannot be verified and it should be confirmed or removed."
+              }
+            ],
+            "summary": "The production policy grants unrestricted administrative access to all actions and resources with no MFA, conditions, or session limits, which is a critical least-privilege failure.",
+            "risk_level": "CRITICAL"
+          }
+        },
+        {
+          "step": "agent2_iam_generator",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T06:19:26.782Z",
+          "correlation_id": "1792995545391",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1992,
+          "output_tokens": 2500,
+          "total_tokens": 4492,
+          "cost_usd": 0.0115936,
+          "fixes": {
+            "fixes": [
+              {
+                "issue": "AllowEverything grants Action \"*\" on Resource \"*\", enabling all API actions including IAM escalation and destructive operations",
+                "fix_type": "permission_narrowing",
+                "concrete_policy_change": "Replace \"Action\": \"*\" with \"Action\": [\"s3:GetObject\",\"s3:PutObject\",\"s3:ListBucket\",\"dynamodb:GetItem\",\"dynamodb:PutItem\",\"dynamodb:Query\",\"kms:Decrypt\",\"kms:GenerateDataKey\",\"logs:CreateLogStream\",\"logs:PutLogEvents\"]. Preserves app read/write to data, DynamoDB item access, encryption/decryption, and log writing. IAM, delete, and admin actions are denied by default.",
+                "severity": "CRITICAL"
+              },
+              {
+                "issue": "AllowEverything uses Resource \"*\", applying permissions to every resource in the production account including data stores and KMS keys",
+                "fix_type": "resource_scoping",
+                "concrete_policy_change": "Replace \"Resource\": \"*\" with \"Resource\": [\"arn:aws:s3:::prod-app-data\",\"arn:aws:s3:::prod-app-data/*\",\"arn:aws:dynamodb:us-east-1:111122223333:table/prod-app-orders\",\"arn:aws:kms:us-east-1:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab\",\"arn:aws:logs:us-east-1:111122223333:log-group:/prod/app:*\"]. Preserves access to the named bucket, table, key, and log group only. Other resources in the account become inaccessible.",
+                "severity": "CRITICAL"
+              },
+              {
+                "issue": "AllowEverything has no aws:MultiFactorAuthPresent condition, so create, modify, and delete actions succeed without MFA",
+                "fix_type": "mfa_requirement",
+                "concrete_policy_change": "Add \"Condition\": {\"Bool\": {\"aws:MultiFactorAuthPresent\": \"true\"}, \"NumericLessThan\": {\"aws:MultiFactorAuthAge\": \"3600\"}} to the scoped statement, and keep service or workload roles in a separate statement without this condition. Human sessions must then use MFA with credentials under 1 hour old. Automated workloads are unaffected.",
+                "severity": "CRITICAL"
+              }
+            ]
+          }
+        },
+        {
+          "step": "agent3_iam_reviewer_attempt_1",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T06:19:32.186Z",
+          "correlation_id": "1792995545391",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 2895,
+          "output_tokens": 810,
+          "total_tokens": 3705,
+          "cost_usd": 0.005556,
+          "verdict": "ESCALATE",
+          "review": {
+            "verdict": "ESCALATE",
+            "reasoning": "The affected principal is unidentified, so the blast radius of narrowing AllowEverything in production cannot be verified; the MFA condition on the scoped statement would block automated workloads unless a separate workload statement exists (which is not defined), the proposed set leaves session TTL, IP/time conditions, and the unused-role finding unaddressed, and the scoped actions lack required resource ARNs (e.g., dynamodb index ARNs and log-stream ARNs for logs:PutLogEvents), so a human owner must confirm the principal, its service dependencies, and the rollout plan."
+          }
+        }
+      ],
+      "status": "ESCALATE",
+      "total_tokens": 10947,
+      "total_cost": 0.024188,
+      "final_risk_level": "CRITICAL",
+      "timestamp_end": "2026-10-26T06:19:32.186Z"
+    }
+  },
+  "escalation_info": {
+    "shouldEscalate": true,
+    "reasons": [
+      "iam: Risk level is CRITICAL",
+      "iam: HIGH risk in production environment",
+      "iam: 1 wildcard IAM permission(s) found",
+      "iam: Reviewer verdict is ESCALATE"
+    ],
+    "recommendation": "HUMAN_REVIEW_REQUIRED"
+  },
+  "substance_level": "core",
+  "final_status": "ESCALATED",
+  "report": "# Infrastructure & Security Review Report\n\n**Combined Risk Level**: CRITICAL\n\n## Access Control (IAM) Findings\n\n**Risk Level**: CRITICAL\n\nThe production policy grants unrestricted administrative access to all actions and resources with no MFA, conditions, or session limits, which is a critical least-privilege failure.\n\n### Access Issues\n- **overly_broad_permissions** (CRITICAL): Statement AllowEverything grants Action \"*\" on Resource \"*\", which permits every API action across all AWS services, including IAM privilege escalation and destructive operations.\n- **missing_resource_boundaries** (CRITICAL): Resource \"*\" applies all permissions to every resource in the production account, with no ARN scoping for data stores, encryption keys, or security groups.\n- **missing_mfa** (CRITICAL): Statement AllowEverything has no aws:MultiFactorAuthPresent condition, so create, delete, and modify actions (including iam:*) are allowed without MFA.\n- **missing_conditions** (HIGH): Statement AllowEverything has no IP range, time-of-day, source VPC/endpoint, or principal-tag conditions, so access is unrestricted by origin or context.\n- **session_ttl** (MEDIUM): The policy document sets no session constraints (such as aws:MultiFactorAuthAge or a bounded role session duration), so any credentials that use it may remain valid for the maximum duration.\n- **unused_role** (LOW): The policy document does not identify any role or user it is bound to, so its actual usage and need cannot be verified and it should be confirmed or removed.\n\n## Synthesis & Recommendations\n\n# Access Control (IAM) Review Report\n\n## Executive Summary\n\nThis report covers the IAM policy audit of the production account. The review found that the statement `AllowEverything` grants `Action: \"*\"` on `Resource: \"*\"`, giving unrestricted administrative access to every AWS API action across every service and resource. It has no MFA requirement, no conditions, and no session limits, and the policy document does not identify the principal it is attached to. The combined risk level is **CRITICAL**. The reviewer returned **ESCALATE**: the proposed scoped replacement cannot be safely rolled out until a human owner identifies the principal, confirms its service dependencies, and resolves the gaps in the fix. Immediate actions are to identify the principal bound to `AllowEverything`, confirm its legitimate needs, and then replace the wildcard grant with the scoped policy and MFA controls described below.\n\n---\n\n## Access Control (IAM) Findings\n\nRisk Level: **CRITICAL**\n\nThe production policy grants unrestricted administrative access to all actions and resources with no MFA, conditions, or session limits, which is a critical least-privilege failure.\n\n### Overly Broad Permissions\n\n❌ **CRITICAL**: Statement `AllowEverything` grants every API action on every resource.\n- **Principal**: Not identified in the policy document. The principal bound to this statement must be determined before any change.\n- **Current Scope**: `Action: \"*\"`, `Resource: \"*\"`\n- **Impact**: Permits all AWS API actions, including IAM privilege escalation, data deletion, encryption key operations, and network changes.\n- **Least-Privilege Target**: Replace `\"Action\": \"*\"` with the minimum set required by the workload:\n  `s3:GetObject`, `s3:PutObject`, `s3:ListBucket`, `dynamodb:GetItem`, `dynamodb:PutItem`, `dynamodb:Query`, `kms:Decrypt`, `kms:GenerateDataKey`, `logs:CreateLogStream`, `logs:PutLogEvents`\n- **Reviewer Caveat**: This action set has not been validated against the actual workload. Missing actions will cause production failures, and it omits any delete or update operations the application may require.\n\n⚠️ **LOW**: Principal ownership is undocumented, so the policy's usage cannot be verified.\n- **Policy**: `AllowEverything`\n- **Issue**: The document does not identify any role or user it is bound to.\n- **Impact**: The business need for this access cannot be confirmed. The policy may be unused, which would make removal the safest option.\n- **Recommendation**: Confirm the attached principal through IAM attachment records (for example, `aws iam list-entities-for-policy`) and either document its owner or remove the attachment.\n\n### Missing Resource Boundaries\n\n❌ **CRITICAL**: Statement `AllowEverything` applies to every resource in the production account.\n- **Affected Resources**: All resources, including data stores, KMS keys, security groups, and IAM entities\n- **Impact**: A compromised credential can read, modify, or destroy any production resource.\n- **Recommended Scoping**: Replace `\"Resource\": \"*\"` with the named resources the application uses:\n  - `arn:aws:s3:::prod-app-data` and `arn:aws:s3:::prod-app-data/*`\n  - `arn:aws:dynamodb:us-east-1:111122223333:table/prod-app-orders`\n  - `arn:aws:kms:us-east-1:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab`\n  - `arn:aws:logs:us-east-1:111122223333:log-group:/prod/app:*`\n- **Reviewer Caveat**: The scoped list is incomplete. `dynamodb:Query` requires index ARNs (for example, `.../table/prod-app-orders/index/*`), and `logs:PutLogEvents` requires log-stream ARNs (for example, `.../log-group:/prod/app:log-stream:*`). Without these, the scoped policy will fail for the application.\n\n### Missing MFA/Conditions\n\n❌ **CRITICAL**: No MFA requirement on `AllowEverything`.\n- **Principal**: Unidentified principal bound to `AllowEverything`\n- **Gap**: Create, modify, and delete actions, including all `iam:*` actions, succeed without MFA.\n- **Impact**: A stolen access key or session token can alter IAM and destroy production resources with no second factor.\n- **Proposed Fix**: Add `aws:MultiFactorAuthPresent: true` and `aws:MultiFactorAuthAge < 3600` to the human-facing scoped statement, with service or workload roles kept in a separate statement without this condition.\n- **Reviewer Caveat**: The separate workload statement is not defined in the proposal. As written, the MFA condition would block automated workloads. Do not apply this condition until that statement exists and has been tested.\n\n⚠️ **HIGH**: No origin or context conditions on `AllowEverything`.\n- **Principal**: Unidentified principal bound to `AllowEverything`\n- **Gap**: No IP range, time-of-day, source VPC or VPC endpoint, or principal-tag conditions.\n- **Impact**: Credentials can be used from any network location at any time.\n- **Recommendation**: Add `aws:SourceVpce` or `aws:SourceIp` conditions matching the application's network path, and evaluate time-of-day restrictions for human access. This was not addressed in the proposed fix.\n\n### Session Credential Issues\n\n⚠️ **MEDIUM**: No session constraints on `AllowEverything`.\n- **Policy**: `AllowEverything`\n- **Gap**: No `aws:MultiFactorAuthAge` bound and no bounded role session duration.\n- **Impact**: Credentials issued under this policy may remain valid for the maximum session duration, extending exposure after a compromise.\n- **Recommendation**: Set `MaxSessionDuration` on the attached role to the shortest value the workload tolerates (for example, 3600 seconds for human roles). Session constraints were not addressed in the proposed fix and should be added as a separate change.\n\n### Privilege Escalation Risks\n\n❌ **CRITICAL**: `Action: \"*\"` permits IAM privilege escalation.\n- **Path**: Any principal bound to `AllowEverything` can call `iam:*` actions, including creating or attaching policies, creating access keys, and modifying trust policies. This allows the principal to grant itself or others any permission in the account. The analyzer identified this capability but did not enumerate a specific sequence of calls.\n- **Mitigation**: Removing `\"Action\": \"*\"` (as proposed) denies `iam:*` by default. For defense in depth, add an explicit Deny on `iam:CreatePolicyVersion`, `iam:AttachRolePolicy`, `iam:PutRolePolicy`, `iam:UpdateAssumeRolePolicy`, `iam:CreateAccessKey`, and `iam:PassRole` for all principals except a designated administrative role, and enable IAM Access Analyzer to detect any remaining escalation paths.\n\n### Verdict: ESCALATE\n\nThe affected principal is unidentified, so the blast radius of narrowing `AllowEverything` in production cannot be verified. The MFA condition on the scoped statement would block automated workloads unless a separate workload statement exists, and that statement is not defined. The proposed action set leaves session TTL, IP and time conditions, and the unused-role finding unaddressed. The scoped actions also lack required resource ARNs, such as DynamoDB index ARNs and CloudWatch Logs log-stream ARNs. A human owner must confirm the principal, its service dependencies, and the rollout plan before any change is applied.\n\n---\n\n## Unified Recommendations\n\nRecommendations are ordered by priority. Items marked as blocked depend on the escalation being resolved.\n\n**CRITICAL**\n\n1. **Identify the principal bound to `AllowEverything`.** Run `aws iam list-entities-for-policy` against the policy ARN, or inspect role and user attachments in the production account. Record the owner and the workload that depends on it. This step is required before any other change.\n2. **Enumerate the application's actual API calls.** Use CloudTrail or IAM Access Analyzer's policy generation feature over a representative period to produce the real action and resource list. Use this to validate the proposed action set, which was not derived from observed usage.\n3. **Complete the scoped resource ARNs.** Add DynamoDB index ARNs for `dynamodb:Query` and log-stream ARNs for `logs:PutLogEvents` to the resource list. Validate the complete policy with IAM Access Analyzer's policy validation before applying it.\n4. **Define a separate workload statement.** Create a statement for service or workload roles that does not carry the MFA condition, then add the human-facing statement with `aws:MultiFactorA\n\n---\n\n*Report generated by Stage 5 Multi-Workflow Coordinator System*\n",
+  "timestamp": "2026-10-26T06:19:50.849Z"
+}

@@ -1,8 +1,8 @@
 {
-  "timestamp": "2026-10-26T05:59:38.929Z",
+  "timestamp": "2026-10-26T06:19:50.875Z",
   "total": 5,
-  "passed": 0,
-  "failed": 5,
+  "passed": 5,
+  "failed": 0,
   "results": [
     {
       "scenario": {
@@ -14,10 +14,8 @@
         "expectedStatus": "ESCALATED",
         "expectedRisk": "HIGH"
       },
-      "passed": false,
-      "issues": [
-        "Risk level mismatch: expected HIGH, got UNKNOWN"
-      ]
+      "passed": true,
+      "issues": []
     },
     {
       "scenario": {
@@ -29,10 +27,8 @@
         "expectedStatus": "ESCALATED",
         "expectedRisk": "CRITICAL"
       },
-      "passed": false,
-      "issues": [
-        "Risk level mismatch: expected CRITICAL, got UNKNOWN"
-      ]
+      "passed": true,
+      "issues": []
     },
     {
       "scenario": {
@@ -43,10 +39,8 @@
         "expectedWorkflow": "kubernetes",
         "expectedRisk": "HIGH"
       },
-      "passed": false,
-      "issues": [
-        "Risk level mismatch: expected HIGH, got UNKNOWN"
-      ]
+      "passed": true,
+      "issues": []
     },
     {
       "scenario": {
@@ -58,10 +52,8 @@
         "expectedStatus": "ESCALATED",
         "expectedRisk": "CRITICAL"
       },
-      "passed": false,
-      "issues": [
-        "Risk level mismatch: expected CRITICAL, got UNKNOWN"
-      ]
+      "passed": true,
+      "issues": []
     },
     {
       "scenario": {
@@ -73,10 +65,8 @@
         "expectedStatus": "ESCALATED",
         "expectedRisk": "CRITICAL"
       },
-      "passed": false,
-      "issues": [
-        "Risk level mismatch: expected CRITICAL, got UNKNOWN"
-      ]
+      "passed": true,
+      "issues": []
     }
   ]
 }
