@@ -207,7 +207,9 @@ function fallbackReportGeneration(workflowType, findings) {
   } else if (workflowType === 'kubernetes') {
     report += '## Container Security (Kubernetes) Findings\n\n';
     report += `Risk Level: **${findings.risk_level}**\n\n`;
-    report += `${findings.summary}\n\n`;
+    if (findings.summary) {
+      report += `${findings.summary}\n\n`;
+    }
 
     if (findings.security_issues && findings.security_issues.length > 0) {
       report += '### Security Issues\n';
@@ -219,7 +221,9 @@ function fallbackReportGeneration(workflowType, findings) {
   } else if (workflowType === 'iam') {
     report += '## Access Control (IAM) Findings\n\n';
     report += `Risk Level: **${findings.risk_level}**\n\n`;
-    report += `${findings.summary}\n\n`;
+    if (findings.summary) {
+      report += `${findings.summary}\n\n`;
+    }
 
     if (findings.access_issues && findings.access_issues.length > 0) {
       report += '### Access Issues\n';

@@ -130,12 +130,16 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
       throw new Error(`Agent 2 output not valid JSON: ${err.message}. Response: ${agent2Response.text.substring(0, 300)}`);
     }
 
-    // Validate Agent 2 output for concreteness (guardrails layer - warnings only)
+    // Validate Agent 2 has required schema fields
+    if (!agent2Fixes.fixes || !Array.isArray(agent2Fixes.fixes)) {
+      throw new Error('Agent 2 output missing fixes array');
+    }
+
+    // Validate Agent 2 output for concreteness (warnings only - prompts enforce this)
     try {
       validateGeneratorConcreteness(agent2Fixes);
     } catch (err) {
       process.stdout.write(`    ⚠ Concreteness check: ${err.message}\n`);
-      // Warning only - don't fail, as prompts already enforce concreteness
     }
 
     const agent2Cost = calculateCost(agent2Response.model, agent2Response.inputTokens, agent2Response.outputTokens);
@@ -189,6 +193,9 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
       try {
         const jsonStr3 = extractJSON(agent3Response.text);
         agent3Review = JSON.parse(jsonStr3);
+        if (!agent3Review.verdict || !agent3Review.reasoning) {
+          throw new Error(`Agent 3 output missing required fields: verdict=${agent3Review.verdict}, reasoning=${agent3Review.reasoning ? 'present' : 'missing'}`);
+        }
       } catch (err) {
         throw new Error(`Agent 3 output not valid JSON: ${err.message}. Response: ${agent3Response.text.substring(0, 300)}`);
       }

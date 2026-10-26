@@ -1,0 +1,208 @@
+{
+  "run_id": "1792993868190",
+  "workflow_type": "terraform",
+  "workflow_executed": "terraform",
+  "environment": "production",
+  "workflow_findings": {
+    "workflow": "terraform",
+    "risk_level": "CRITICAL",
+    "destructive_changes": [
+      {
+        "resource": "aws_rds_cluster.prod",
+        "action": "destroy_and_recreate",
+        "forcing_attribute": "db_subnet_group_name",
+        "environment": "production",
+        "severity": "CRITICAL"
+      }
+    ],
+    "security_exposure": [
+      {
+        "resource": "aws_rds_cluster.prod",
+        "issue": "deletion_protection is not set (defaults to false), so the production cluster can be deleted without a guard."
+      },
+      {
+        "resource": "aws_rds_cluster.prod",
+        "issue": "enabled_cloudwatch_logs_exports is not set, so audit, error, and slow query logs are not exported for this production database."
+      },
+      {
+        "resource": "aws_rds_cluster.prod",
+        "issue": "vpc_security_group_ids is not set, so the cluster falls back to the default VPC security group, which may permit broader network access than intended."
+      },
+      {
+        "resource": "aws_rds_cluster.prod",
+        "issue": "iam_database_authentication_enabled is not set (defaults to false), so the cluster relies only on the static master password."
+      },
+      {
+        "resource": "aws_rds_cluster.prod",
+        "issue": "master_username is the common default value 'admin', which makes credential guessing easier."
+      },
+      {
+        "resource": "aws_kms_key.rds",
+        "issue": "deletion_window_in_days is set to the minimum of 7 and no explicit key policy is defined, which leaves little recovery time and relies on the default key policy."
+      }
+    ],
+    "cost_notes": [
+      "The plan defines no aws_rds_cluster_instance resources, so compute cost is zero until instances are added, and those instances will be the primary running cost.",
+      "backup_retention_period of 30 days will increase backup storage charges beyond the free allocation equal to the provisioned database storage.",
+      "aws_kms_key.rds carries a fixed monthly charge plus per-request API costs, and aws_kms_alias.rds adds no cost.",
+      "aws_db_subnet_group.prod and aws_rds_cluster.prod have no direct cost, but the subnet group's replacement would require recreating the cluster and incurring snapshot and restore costs."
+    ],
+    "remediations": [
+      {
+        "resource": "aws_rds_cluster.prod",
+        "issue": "Changing db_subnet_group_name forces destroy and recreate of the production cluster, risking data loss and downtime.",
+        "proposed_fix": "Set db_subnet_group_name = \"<existing subnet group name>\" so the plan shows no replacement; add lifecycle { prevent_destroy = true } to block accidental destroys. Create any new subnet group separately and migrate in a maintenance window after a verified snapshot.",
+        "fix_type": "lifecycle_change",
+        "severity": "CRITICAL"
+      },
+      {
+        "resource": "aws_rds_cluster.prod",
+        "issue": "deletion_protection is unset (defaults to false), so the production cluster can be deleted without a guard.",
+        "proposed_fix": "deletion_protection = true",
+        "fix_type": "config_change",
+        "severity": "HIGH"
+      },
+      {
+        "resource": "aws_rds_cluster.prod",
+        "issue": "vpc_security_group_ids is unset, so the cluster uses the default VPC security group, which may allow broad network access.",
+        "proposed_fix": "vpc_security_group_ids = [aws_security_group.rds_prod.id], where that group allows ingress only on the engine port (e.g. 5432 or 3306) from the application security group ID.",
+        "fix_type": "config_change",
+        "severity": "HIGH"
+      }
+    ],
+    "verdict": "ESCALATE",
+    "audit_trail": {
+      "workflow": "terraform",
+      "correlation_id": "1792993868190",
+      "timestamp_start": "2026-10-26T05:51:08.195Z",
+      "steps": [
+        {
+          "step": "agent1_terraform_analyzer",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T05:51:18.735Z",
+          "correlation_id": "1792993868190",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1522,
+          "output_tokens": 1971,
+          "total_tokens": 3493,
+          "cost_usd": 0.0091016,
+          "findings": {
+            "destructive_changes": [
+              {
+                "resource": "aws_rds_cluster.prod",
+                "action": "destroy_and_recreate",
+                "forcing_attribute": "db_subnet_group_name",
+                "environment": "production",
+                "severity": "CRITICAL"
+              }
+            ],
+            "security_exposure": [
+              {
+                "resource": "aws_rds_cluster.prod",
+                "issue": "deletion_protection is not set (defaults to false), so the production cluster can be deleted without a guard."
+              },
+              {
+                "resource": "aws_rds_cluster.prod",
+                "issue": "enabled_cloudwatch_logs_exports is not set, so audit, error, and slow query logs are not exported for this production database."
+              },
+              {
+                "resource": "aws_rds_cluster.prod",
+                "issue": "vpc_security_group_ids is not set, so the cluster falls back to the default VPC security group, which may permit broader network access than intended."
+              },
+              {
+                "resource": "aws_rds_cluster.prod",
+                "issue": "iam_database_authentication_enabled is not set (defaults to false), so the cluster relies only on the static master password."
+              },
+              {
+                "resource": "aws_rds_cluster.prod",
+                "issue": "master_username is the common default value 'admin', which makes credential guessing easier."
+              },
+              {
+                "resource": "aws_kms_key.rds",
+                "issue": "deletion_window_in_days is set to the minimum of 7 and no explicit key policy is defined, which leaves little recovery time and relies on the default key policy."
+              }
+            ],
+            "cost_notes": [
+              "The plan defines no aws_rds_cluster_instance resources, so compute cost is zero until instances are added, and those instances will be the primary running cost.",
+              "backup_retention_period of 30 days will increase backup storage charges beyond the free allocation equal to the provisioned database storage.",
+              "aws_kms_key.rds carries a fixed monthly charge plus per-request API costs, and aws_kms_alias.rds adds no cost.",
+              "aws_db_subnet_group.prod and aws_rds_cluster.prod have no direct cost, but the subnet group's replacement would require recreating the cluster and incurring snapshot and restore costs."
+            ],
+            "risk_level": "CRITICAL"
+          }
+        },
+        {
+          "step": "agent2_remediation_generator",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T05:51:27.345Z",
+          "correlation_id": "1792993868190",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1391,
+          "output_tokens": 1596,
+          "total_tokens": 2987,
+          "cost_usd": 0.0074968,
+          "remediations": {
+            "remediations": [
+              {
+                "resource": "aws_rds_cluster.prod",
+                "issue": "Changing db_subnet_group_name forces destroy and recreate of the production cluster, risking data loss and downtime.",
+                "proposed_fix": "Set db_subnet_group_name = \"<existing subnet group name>\" so the plan shows no replacement; add lifecycle { prevent_destroy = true } to block accidental destroys. Create any new subnet group separately and migrate in a maintenance window after a verified snapshot.",
+                "fix_type": "lifecycle_change",
+                "severity": "CRITICAL"
+              },
+              {
+                "resource": "aws_rds_cluster.prod",
+                "issue": "deletion_protection is unset (defaults to false), so the production cluster can be deleted without a guard.",
+                "proposed_fix": "deletion_protection = true",
+                "fix_type": "config_change",
+                "severity": "HIGH"
+              },
+              {
+                "resource": "aws_rds_cluster.prod",
+                "issue": "vpc_security_group_ids is unset, so the cluster uses the default VPC security group, which may allow broad network access.",
+                "proposed_fix": "vpc_security_group_ids = [aws_security_group.rds_prod.id], where that group allows ingress only on the engine port (e.g. 5432 or 3306) from the application security group ID.",
+                "fix_type": "config_change",
+                "severity": "HIGH"
+              }
+            ]
+          }
+        },
+        {
+          "step": "agent3_adversarial_reviewer_attempt_1",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T05:51:30.974Z",
+          "correlation_id": "1792993868190",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1619,
+          "output_tokens": 353,
+          "total_tokens": 1972,
+          "cost_usd": 0.0027072,
+          "verdict": "ESCALATE",
+          "review": {
+            "verdict": "ESCALATE",
+            "reasoning": "The `{{remediations}}` placeholder was never populated, so no proposed fix can be validated, and the original finding is a CRITICAL destroy_and_recreate of production resource aws_rds_cluster.prod (forcing attribute db_subnet_group_name), which requires human sign-off under the escalation rules regardless of any remediation."
+          }
+        }
+      ],
+      "status": "ESCALATE",
+      "total_tokens": 8452,
+      "total_cost": 0.0193056,
+      "final_risk_level": "CRITICAL",
+      "timestamp_end": "2026-10-26T05:51:30.975Z"
+    }
+  },
+  "escalation_info": {
+    "shouldEscalate": true,
+    "reasons": [
+      "terraform: Risk level is CRITICAL",
+      "terraform: HIGH risk in production environment",
+      "terraform: 1 destructive change(s) in production",
+      "terraform: Reviewer verdict is ESCALATE"
+    ],
+    "recommendation": "HUMAN_REVIEW_REQUIRED"
+  },
+  "substance_level": "core",
+  "final_status": "ESCALATED",
+  "report": "# Infrastructure & Security Review Report\n\n**Combined Risk Level**: CRITICAL\n\n## Infrastructure (Terraform) Findings\n\n**Risk Level**: CRITICAL\n\n### Destructive Changes\n- **aws_rds_cluster.prod** (CRITICAL): destroy_and_recreate\n  - Attribute causing replacement: db_subnet_group_name\n\n### Security Exposure\n- **aws_rds_cluster.prod** (undefined): deletion_protection is not set (defaults to false), so the production cluster can be deleted without a guard.\n- **aws_rds_cluster.prod** (undefined): enabled_cloudwatch_logs_exports is not set, so audit, error, and slow query logs are not exported for this production database.\n- **aws_rds_cluster.prod** (undefined): vpc_security_group_ids is not set, so the cluster falls back to the default VPC security group, which may permit broader network access than intended.\n- **aws_rds_cluster.prod** (undefined): iam_database_authentication_enabled is not set (defaults to false), so the cluster relies only on the static master password.\n- **aws_rds_cluster.prod** (undefined): master_username is the common default value 'admin', which makes credential guessing easier.\n- **aws_kms_key.rds** (undefined): deletion_window_in_days is set to the minimum of 7 and no explicit key policy is defined, which leaves little recovery time and relies on the default key policy.\n\n### Cost Impact\n- The plan defines no aws_rds_cluster_instance resources, so compute cost is zero until instances are added, and those instances will be the primary running cost.\n- backup_retention_period of 30 days will increase backup storage charges beyond the free allocation equal to the provisioned database storage.\n- aws_kms_key.rds carries a fixed monthly charge plus per-request API costs, and aws_kms_alias.rds adds no cost.\n- aws_db_subnet_group.prod and aws_rds_cluster.prod have no direct cost, but the subnet group's replacement would require recreating the cluster and incurring snapshot and restore costs.\n\n## Synthesis & Recommendations\n\n# Infrastructure Security Review Report\n\n**Correlation ID:** 1792993868190\n**Review Date:** 2026-10-26\n**Scope:** Terraform plan analysis (Terraform Safety Review)\n**Combined Risk Level:** **CRITICAL**\n\n## Executive Summary\n\nThis report covers the Terraform Safety Review of the production database plan, the only workflow triggered in this run. The plan would force destruction and recreation of the production Aurora/RDS cluster `aws_rds_cluster.prod` because `db_subnet_group_name` changes, risking data loss and extended downtime. The same resource also has several security gaps, including no deletion protection, no default VPC security group override, no IAM database authentication, a default `admin` master username, and no audit log export. The KMS key `aws_kms_key.rds` uses the minimum 7-day deletion window with no explicit key policy. The verdict is **ESCALATE**, and the plan must not be applied until a human reviewer approves the change. Required actions are to preserve the existing subnet group, add lifecycle protection, and remediate the security exposures before any apply.\n\n## Infrastructure (Terraform) Findings\n\nRisk Level: **CRITICAL**\n\n### Destructive Changes\n\n❌ **CRITICAL**: Production database cluster is planned for destroy-and-recreate.\n- **Resource**: `aws_rds_cluster.prod`\n- **Action**: `destroy_and_recreate`\n- **Forcing Attribute**: `db_subnet_group_name`\n- **Environment**: Production\n- **Why It Matters**: Recreating the cluster deletes the existing database. Without a verified snapshot and a maintenance window, this risks permanent data loss and production outage. Restoring from snapshot adds time and cost.\n- **Recommendation**: Do not apply this plan. Keep `db_subnet_group_name` pointed at the existing subnet group, and add `lifecycle { prevent_destroy = true }` to `aws_rds_cluster.prod`. If a new subnet group is required, create it as a separate resource and migrate during a planned maintenance window after a verified snapshot.\n\n### Security Exposure\n\n❌ **HIGH**: Production cluster can be deleted without a guard.\n- **Resource**: `aws_rds_cluster.prod`\n- **Exposure**: `deletion_protection` is not set and defaults to `false`.\n- **Impact**: A single `terraform destroy` or console action can delete the production database.\n- **Recommendation**: Set `deletion_protection = true`.\n\n❌ **HIGH**: Cluster falls back to the default VPC security group.\n- **Resource**: `aws_rds_cluster.prod`\n- **Exposure**: `vpc_security_group_ids` is not set, so the default VPC security group applies.\n- **Impact**: The default group may permit broader network access than the database requires.\n- **Recommendation**: Create a dedicated `aws_security_group.rds_prod` that allows ingress only on the engine port (5432 for PostgreSQL or 3306 for MySQL) from the application security group, then set `vpc_security_group_ids = [aws_security_group.rds_prod.id]`.\n\n⚠️ **UNRATED** (analyzer did not assign severity): No audit log export for production database.\n- **Resource**: `aws_rds_cluster.prod`\n- **Exposure**: `enabled_cloudwatch_logs_exports` is not set, so audit, error, and slow query logs are not exported.\n- **Impact**: Security investigations and incident forensics lack database-level audit data.\n- **Recommendation**: Set `enabled_cloudwatch_logs_exports` to the log types supported by the engine (for example, `[\"audit\", \"error\", \"slowquery\"]` for Aurora MySQL, or `[\"postgresql\"]` for Aurora PostgreSQL).\n\n⚠️ **UNRATED** (analyzer did not assign severity): Static password is the only authentication method.\n- **Resource**: `aws_rds_cluster.prod`\n- **Exposure**: `iam_database_authentication_enabled` is not set and defaults to `false`.\n- **Impact**: Access depends solely on a static master password, which is harder to rotate and audit.\n- **Recommendation**: Set `iam_database_authentication_enabled = true`, and use IAM roles for application database access where the engine supports it.\n\n⚠️ **UNRATED** (analyzer did not assign severity): Default master username.\n- **Resource**: `aws_rds_cluster.prod`\n- **Exposure**: `master_username` is set to the common default `admin`.\n- **Impact**: Attackers can target a known username during credential guessing.\n- **Recommendation**: Replace `admin` with a non-default username. Where supported, set `manage_master_user_password = true` so AWS Secrets Manager manages the password. Changing `master_username` on an existing cluster can force replacement, so validate with the plan before applying.\n\n⚠️ **UNRATED** (analyzer did not assign severity): Short KMS recovery window and implicit key policy.\n- **Resource**: `aws_kms_key.rds`\n- **Exposure**: `deletion_window_in_days` is set to the minimum of 7, and no explicit key policy is defined.\n- **Impact**: Accidental key scheduling for deletion leaves little time to recover, and the default key policy may grant broader access than intended.\n- **Recommendation**: Set `deletion_window_in_days = 30`, and define an explicit `policy` on `aws_kms_key.rds` that grants only the required administrators and the RDS service principal.\n\n### Cost Impact\n\n- **Compute**: The plan defines no `aws_rds_cluster_instance` resources. Compute cost is currently zero, but adding instances will become the primary running cost. Size these resources before production rollout.\n- **Backups**: `backup_retention_period = 30` will create backup storage charges above the free allocation equal to provisioned database storage. Confirm that 30-day retention is a compliance requirement.\n- **KMS**: `aws_kms_key.rds` incurs a fixed monthly charge plus per-request API costs. `aws_kms_alias.rds` adds no cost.\n- **Replacement Cost**: `aws_db_subnet_group.prod` and `aws_rds_cluster.prod` have no direct cost, but replacing the subnet group forces cluster recreation, which incurs snapshot and restore costs and extended downtime.\n\n### Verdict: ESCALATE\n\nThe reviewer returned **ESCALATE** because the plan contains a CRITICAL `destroy_and_recreate` action against production resource `aws_rds_cluster.prod`. Under escalation rules, this requires human sign-off regardless of any proposed remediation.\n\nThe reviewer also reported that the `{{remediations}}` placeholder was not populated and that no proposed fix could be validated. However, the remediation generator step completed and produced three remediations for `aws_rds_cluster.prod`. This is a pipeline defect that should be fixed. The reviewer's reasoning should be re-run against the populated remediations before the escalation is closed. The escalation itself is still valid.\n\n## Unified Recommendations\n\n**CRITICAL**\n\n1. **Block the production destroy-and-recreate.** Do not apply the current plan. Restore `db_subnet_group_name` to the existing subnet group name so the plan shows no replacement for `aws_rds_cluster.prod`.\n2. **Add lifecycle protection.** Add `lifecycle { prevent_destroy = true }` to `aws_rds_cluster.prod`.\n3. **Plan any subnet group migration separately.** If the new subnet group is required, create it as its own resource. Perform the migration during a maintenance window, after taking and verifying a snapshot of `aws_rds_cluster.prod`.\n\n**HIGH**\n\n4. **Enable deletion protection.** Set `deletion_protection = true` on `aws_rds_cluster.prod`.\n5. **Replace the default security group.** Create `aws_security_group.rds_prod` that allows ingress only on the engine port from the application security group, and attach it through `vpc_security_group_ids`.\n\n**UNRATED (analyzer did not assign severity; recommended\n\n---\n\n*Report generated by Stage 5 Multi-Workflow Coordinator System*\n",
+  "timestamp": "2026-10-26T05:51:48.079Z"
+}

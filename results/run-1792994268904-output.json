@@ -1,0 +1,142 @@
+{
+  "run_id": "1792994268904",
+  "workflow_type": "kubernetes",
+  "workflow_executed": "kubernetes",
+  "environment": "production",
+  "workflow_findings": {
+    "workflow": "kubernetes",
+    "risk_level": "UNKNOWN",
+    "security_issues": [],
+    "summary": "Error during analysis: Agent 2 output validation failed: Fix 0: concrete_yaml contains placeholder text",
+    "fixes": [],
+    "verdict": "ERROR",
+    "audit_trail": {
+      "workflow": "kubernetes",
+      "correlation_id": "1792994268904",
+      "timestamp_start": "2026-10-26T05:57:48.911Z",
+      "steps": [
+        {
+          "step": "agent1_kubernetes_analyzer",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T05:58:01.347Z",
+          "correlation_id": "1792994268904",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1564,
+          "output_tokens": 2055,
+          "total_tokens": 3619,
+          "cost_usd": 0.0094712,
+          "findings": {
+            "security_issues": [
+              {
+                "type": "rbac",
+                "severity": "CRITICAL",
+                "resource_kind": "ClusterRole",
+                "resource_name": "admin-like-role",
+                "namespace": "cluster-wide",
+                "description": "ClusterRole grants apiGroups, resources, and verbs all set to wildcard (*), giving full cluster-admin-equivalent access."
+              },
+              {
+                "type": "rbac",
+                "severity": "CRITICAL",
+                "resource_kind": "ServiceAccount",
+                "resource_name": "app-sa",
+                "namespace": "insecure-app",
+                "description": "ClusterRoleBinding app-admin-binding grants the cluster-wide admin-like-role to ServiceAccount app-sa, so any compromise of the pod yields full cluster control."
+              },
+              {
+                "type": "network_policy",
+                "severity": "HIGH",
+                "resource_kind": "NetworkPolicy",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "No NetworkPolicy exists in namespace insecure-app, so all ingress and egress traffic to and from the Deployment insecure-app is allowed by default."
+              },
+              {
+                "type": "security_context",
+                "severity": "HIGH",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Container app has no securityContext and no runAsNonRoot setting, so it may run as root (UID 0) in production."
+              },
+              {
+                "type": "security_context",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Container app does not set readOnlyRootFilesystem: true, allowing writes to the container root filesystem."
+              },
+              {
+                "type": "security_context",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Container app does not set allowPrivilegeEscalation: false, so processes can gain more privileges than their parent."
+              },
+              {
+                "type": "resource_limits",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Container app defines CPU and memory requests but no CPU or memory limits, allowing unbounded resource consumption."
+              },
+              {
+                "type": "pod_security",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Pod does not drop Linux capabilities (no capabilities.drop: [ALL]), so the container keeps the default capability set."
+              },
+              {
+                "type": "pod_security",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Pod spec has no seccompProfile, so the container runs without a RuntimeDefault or Localhost seccomp filter."
+              },
+              {
+                "type": "pod_security",
+                "severity": "MEDIUM",
+                "resource_kind": "ServiceAccount",
+                "resource_name": "app-sa",
+                "namespace": "insecure-app",
+                "description": "ServiceAccount app-sa does not set automountServiceAccountToken: false, so the admin-level token is mounted into the pod."
+              },
+              {
+                "type": "pod_security",
+                "severity": "LOW",
+                "resource_kind": "Deployment",
+                "resource_name": "insecure-app",
+                "namespace": "insecure-app",
+                "description": "Container app uses the mutable image tag app:latest with imagePullPolicy Always, so deployed code is not pinned or reproducible."
+              }
+            ],
+            "summary": "The workload has critical RBAC exposure through a wildcard cluster-admin-equivalent role bound to its ServiceAccount, plus missing network policies and hardening controls, so it is not safe for production.",
+            "risk_level": "CRITICAL"
+          }
+        }
+      ],
+      "status": "FAILED",
+      "total_tokens": 3619,
+      "total_cost": 0.0094712,
+      "timestamp_end": "2026-10-26T05:58:19.747Z",
+      "error": "Agent 2 output validation failed: Fix 0: concrete_yaml contains placeholder text"
+    }
+  },
+  "escalation_info": {
+    "shouldEscalate": true,
+    "reasons": [
+      "Substance-based elevation: Workflow substance level is toy (no significant findings)"
+    ],
+    "recommendation": "AUTO_APPROVED"
+  },
+  "substance_level": "toy",
+  "final_status": "ESCALATED",
+  "report": "# Infrastructure & Security Review Report\n\n**Combined Risk Level**: LOW\n\n## Container Security (Kubernetes) Findings\n\n**Risk Level**: UNKNOWN\n\nError during analysis: Agent 2 output validation failed: Fix 0: concrete_yaml contains placeholder text\n\n## Synthesis & Recommendations\n\n# Infrastructure Security Review Report\n\n## Executive Summary\n\nThis review covers the Kubernetes Security Review (Container Security) workflow, the only workflow triggered for this submission. The analyzer identified **CRITICAL** risk in the `insecure-app` namespace: the `insecure-app` Deployment runs under a ServiceAccount, `app-sa`, that holds cluster-admin-equivalent permissions through a wildcard ClusterRole, `admin-like-role`, bound by `app-admin-binding`. A compromise of any pod in this workload would give an attacker full control of the cluster. The workload also has no NetworkPolicy and lacks standard hardening controls, so it is not safe for production.\n\nThe submitted combined risk level of **LOW** is not supported by these findings and should be disregarded. The Kubernetes workflow's own validation failed, so its verdict is **ERROR** and no remediation fixes were generated. We recommend treating this review as **ESCALATE**. Immediate actions are to remove the wildcard RBAC binding, restrict the ServiceAccount token, and apply a default-deny NetworkPolicy before any further rollout.\n\n## Findings by Domain\n\n### Container Security (Kubernetes) Findings\n\nRisk Level: **CRITICAL**\n\nThe workload has critical RBAC exposure through a wildcard cluster-admin-equivalent role bound to its ServiceAccount, plus missing network policies and hardening controls, so it is not safe for production.\n\n**Analysis status:** The analyzer completed, but the workflow failed validation (`Agent 2 output validation failed: Fix 0: concrete_yaml contains placeholder text`). The findings below come from the completed analyzer output. Remediation YAML was not produced and must be written and reviewed manually.\n\n#### RBAC Issues\n\n❌ **CRITICAL**: Wildcard ClusterRole grants cluster-admin-equivalent access.\n- **Resource**: ClusterRole `admin-like-role` (cluster-wide)\n- **Issue**: `apiGroups`, `resources`, and `verbs` are all set to `*`.\n- **Impact**: Any principal bound to this role can read, modify, or delete every resource in the cluster, including Secrets in all namespaces.\n- **Fix needed**: Delete `admin-like-role`, or replace it with a role that lists only the specific API groups, resources, and verbs the workload requires.\n\n❌ **CRITICAL**: Cluster-wide binding grants admin-equivalent role to the workload ServiceAccount.\n- **Resource**: ServiceAccount `app-sa` in namespace `insecure-app`, via ClusterRoleBinding `app-admin-binding`\n- **Issue**: The ClusterRoleBinding attaches `admin-like-role` to `app-sa` across the entire cluster.\n- **Impact**: Compromising any `insecure-app` pod yields full cluster control.\n- **Fix needed**: Delete the ClusterRoleBinding `app-admin-binding`. Determine the API calls `insecure-app` actually makes, then create a namespaced Role in `insecure-app` with only those permissions and bind it to `app-sa` with a RoleBinding.\n\n#### Network Policies\n\n⚠️ **HIGH**: No NetworkPolicy governs the workload.\n- **Namespace**: `insecure-app`\n- **Policy gap**: No NetworkPolicy exists, so all ingress and egress traffic to and from the `insecure-app` Deployment is allowed by default.\n- **Impact**: Any pod in the cluster can reach `insecure-app`, and a compromised pod can make arbitrary outbound connections, including to the Kubernetes API and external hosts. This enables lateral movement and data exfiltration.\n- **Fix needed**: Apply a default-deny NetworkPolicy in `insecure-app` covering both `Ingress` and `Egress`. Then add explicit allow rules for only the required sources, destinations, and ports. Egress to the cluster DNS service must be permitted explicitly, or name resolution will fail.\n\n#### Security Contexts\n\n⚠️ **HIGH**: Container does not enforce a non-root user.\n- **Resource**: Deployment `insecure-app`, container `app`\n- **Missing settings**: No `securityContext` and no `runAsNonRoot`.\n- **Impact**: The container may run as UID 0 in production. A container escape or application flaw would then grant root-level access on the node.\n- **Fix needed**: Set `runAsNonRoot: true` and a non-zero `runAsUser` at the pod or container level.\n\n⚠️ **MEDIUM**: Container root filesystem is writable.\n- **Resource**: Deployment `insecure-app`, container `app`\n- **Missing settings**: `readOnlyRootFilesystem: true` is not set.\n- **Impact**: An attacker can modify binaries and configuration inside the container, including persistence mechanisms.\n- **Fix needed**: Set `readOnlyRootFilesystem: true`. Mount `emptyDir` volumes at any paths the application writes to, such as `/tmp`.\n\n⚠️ **MEDIUM**: Privilege escalation is not blocked.\n- **Resource**: Deployment `insecure-app`, container `app`\n- **Missing settings**: `allowPrivilegeEscalation: false` is not set.\n- **Impact**: Processes can gain more privileges than their parent, for example through setuid binaries.\n- **Fix needed**: Set `allowPrivilegeEscalation: false` on the container.\n\n#### Resource Limits\n\n⚠️ **MEDIUM**: No CPU or memory limits defined.\n- **Container**: `app` in Deployment `insecure-app`\n- **Missing settings**: Requests are defined, but `limits.cpu` and `limits.memory` are not.\n- **Impact**: A runaway process or a denial-of-service attack can consume all node resources and affect co-located workloads.\n- **Fix needed**: Add `resources.limits.cpu` and `resources.limits.memory`, sized at or above the current requests based on observed usage.\n\n#### Pod Security\n\n⚠️ **MEDIUM**: Linux capabilities are not dropped.\n- **Affected resource**: Deployment `insecure-app`, container `app`\n- **Issue**: `capabilities.drop: [ALL]` is not set, so the default capability set is retained.\n- **Impact**: The container keeps capabilities it does not need, which widens the attack surface after a compromise.\n- **Fix needed**: Set `capabilities.drop: [ALL]`. Add back only specific capabilities if the application proves to need them.\n\n⚠️ **MEDIUM**: No seccomp profile applied.\n- **Affected resource**: Deployment `insecure-app`, pod spec\n- **Issue**: `seccompProfile` is not set.\n- **Impact**: The container runs without a syscall filter, so the kernel attack surface is unrestricted.\n- **Fix needed**: Set `securityContext.seccompProfile.type: RuntimeDefault` at the pod level.\n\n⚠️ **MEDIUM**: Admin-level ServiceAccount token is auto-mounted.\n- **Affected resource**: ServiceAccount `app-sa` in `insecure-app`\n- **Issue**: `automountServiceAccountToken` is not set to `false`, so the token with cluster-admin-equivalent rights is mounted into the pod.\n- **Impact**: Any code running in the pod can use the token to act on the K\n\n---\n\n*Report generated by Stage 5 Multi-Workflow Coordinator System*\n",
+  "timestamp": "2026-10-26T05:58:37.721Z"
+}

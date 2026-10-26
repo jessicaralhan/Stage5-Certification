@@ -1,0 +1,196 @@
+{
+  "run_id": "1792994697591",
+  "workflow_type": "kubernetes",
+  "workflow_executed": "kubernetes",
+  "environment": "production",
+  "workflow_findings": {
+    "workflow": "kubernetes",
+    "risk_level": "HIGH",
+    "security_issues": [
+      {
+        "type": "network_policy",
+        "severity": "HIGH",
+        "resource_kind": "NetworkPolicy",
+        "resource_name": "api-server-policy",
+        "namespace": "secure-app",
+        "description": "No namespace-wide default-deny NetworkPolicy exists, so pods not selected by api-server-policy (including any frontend or database pods) accept and send all traffic."
+      },
+      {
+        "type": "network_policy",
+        "severity": "MEDIUM",
+        "resource_kind": "NetworkPolicy",
+        "resource_name": "api-server-policy",
+        "namespace": "secure-app",
+        "description": "The DNS egress rule uses an empty namespaceSelector, allowing UDP/53 to kube-dns in any namespace instead of only the kube-system namespace."
+      },
+      {
+        "type": "pod_security",
+        "severity": "MEDIUM",
+        "resource_kind": "Deployment",
+        "resource_name": "api-server",
+        "namespace": "secure-app",
+        "description": "The pod spec does not set a seccompProfile (for example RuntimeDefault), so the container runs without a syscall filter."
+      },
+      {
+        "type": "pod_security",
+        "severity": "MEDIUM",
+        "resource_kind": "Deployment",
+        "resource_name": "api-server",
+        "namespace": "secure-app",
+        "description": "The pod does not set automountServiceAccountToken: false, so the Kubernetes API token is mounted into the container even though it is not needed."
+      },
+      {
+        "type": "pod_security",
+        "severity": "MEDIUM",
+        "resource_kind": "ServiceAccount",
+        "resource_name": "api-server",
+        "namespace": "secure-app",
+        "description": "The ServiceAccount does not set automountServiceAccountToken: false, so its token is auto-mounted into every pod that uses it."
+      },
+      {
+        "type": "rbac",
+        "severity": "LOW",
+        "resource_kind": "Role",
+        "resource_name": "api-server-role",
+        "namespace": "secure-app",
+        "description": "The configmaps rule grants the list verb with resourceNames, but list requests are not restricted by resourceNames, so the name restriction is ineffective for list."
+      }
+    ],
+    "summary": "The api-server workload has tight container hardening, resource limits, and a scoped Role, but lacks a namespace default-deny policy, seccomp profile, and token automount restrictions.",
+    "fixes": [
+      {
+        "resource": "secure-app/default-deny-all",
+        "fix_type": "network_policy",
+        "concrete_yaml": "apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: default-deny-all\n  namespace: secure-app\nspec:\n  podSelector: {}\n  policyTypes:\n  - Ingress\n  - Egress",
+        "severity": "HIGH"
+      }
+    ],
+    "verdict": "ESCALATE",
+    "audit_trail": {
+      "workflow": "kubernetes",
+      "correlation_id": "1792994697591",
+      "timestamp_start": "2026-10-26T06:04:57.596Z",
+      "steps": [
+        {
+          "step": "agent1_kubernetes_analyzer",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T06:05:09.527Z",
+          "correlation_id": "1792994697591",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 2238,
+          "output_tokens": 2506,
+          "total_tokens": 4744,
+          "cost_usd": 0.0118144,
+          "findings": {
+            "security_issues": [
+              {
+                "type": "network_policy",
+                "severity": "HIGH",
+                "resource_kind": "NetworkPolicy",
+                "resource_name": "api-server-policy",
+                "namespace": "secure-app",
+                "description": "No namespace-wide default-deny NetworkPolicy exists, so pods not selected by api-server-policy (including any frontend or database pods) accept and send all traffic."
+              },
+              {
+                "type": "network_policy",
+                "severity": "MEDIUM",
+                "resource_kind": "NetworkPolicy",
+                "resource_name": "api-server-policy",
+                "namespace": "secure-app",
+                "description": "The DNS egress rule uses an empty namespaceSelector, allowing UDP/53 to kube-dns in any namespace instead of only the kube-system namespace."
+              },
+              {
+                "type": "pod_security",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "api-server",
+                "namespace": "secure-app",
+                "description": "The pod spec does not set a seccompProfile (for example RuntimeDefault), so the container runs without a syscall filter."
+              },
+              {
+                "type": "pod_security",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "api-server",
+                "namespace": "secure-app",
+                "description": "The pod does not set automountServiceAccountToken: false, so the Kubernetes API token is mounted into the container even though it is not needed."
+              },
+              {
+                "type": "pod_security",
+                "severity": "MEDIUM",
+                "resource_kind": "ServiceAccount",
+                "resource_name": "api-server",
+                "namespace": "secure-app",
+                "description": "The ServiceAccount does not set automountServiceAccountToken: false, so its token is auto-mounted into every pod that uses it."
+              },
+              {
+                "type": "rbac",
+                "severity": "LOW",
+                "resource_kind": "Role",
+                "resource_name": "api-server-role",
+                "namespace": "secure-app",
+                "description": "The configmaps rule grants the list verb with resourceNames, but list requests are not restricted by resourceNames, so the name restriction is ineffective for list."
+              }
+            ],
+            "summary": "The api-server workload has tight container hardening, resource limits, and a scoped Role, but lacks a namespace default-deny policy, seccomp profile, and token automount restrictions.",
+            "risk_level": "HIGH"
+          }
+        },
+        {
+          "step": "agent2_kubernetes_generator",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T06:05:23.136Z",
+          "correlation_id": "1792994697591",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1813,
+          "output_tokens": 904,
+          "total_tokens": 2717,
+          "cost_usd": 0.0050664,
+          "fixes": {
+            "fixes": [
+              {
+                "resource": "secure-app/default-deny-all",
+                "fix_type": "network_policy",
+                "concrete_yaml": "apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: default-deny-all\n  namespace: secure-app\nspec:\n  podSelector: {}\n  policyTypes:\n  - Ingress\n  - Egress",
+                "severity": "HIGH"
+              }
+            ]
+          }
+        },
+        {
+          "step": "agent3_kubernetes_reviewer_attempt_1",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T06:05:49.415Z",
+          "correlation_id": "1792994697591",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1914,
+          "output_tokens": 512,
+          "total_tokens": 2426,
+          "cost_usd": 0.0035792,
+          "verdict": "ESCALATE",
+          "review": {
+            "verdict": "ESCALATE",
+            "reasoning": "The default-deny-all policy in production namespace secure-app selects every pod and denies all ingress and egress, but it ships no allow rules for the frontend or database pods, so their traffic and DNS lookups (UDP/53) would be blocked and break those workloads, and the fix leaves the other five findings (DNS namespaceSelector, seccompProfile, automountServiceAccountToken on Deployment and ServiceAccount, and the configmaps list/resourceNames RBAC rule) unaddressed."
+          }
+        }
+      ],
+      "status": "ESCALATE",
+      "total_tokens": 9887,
+      "total_cost": 0.020460000000000002,
+      "final_risk_level": "HIGH",
+      "timestamp_end": "2026-10-26T06:05:49.415Z"
+    }
+  },
+  "escalation_info": {
+    "shouldEscalate": true,
+    "reasons": [
+      "kubernetes: HIGH risk in production environment",
+      "kubernetes: Reviewer verdict is ESCALATE"
+    ],
+    "recommendation": "HUMAN_REVIEW_REQUIRED"
+  },
+  "substance_level": "core",
+  "final_status": "ESCALATED",
+  "report": "# Infrastructure & Security Review Report\n\n**Combined Risk Level**: HIGH\n\n## Container Security (Kubernetes) Findings\n\n**Risk Level**: HIGH\n\nThe api-server workload has tight container hardening, resource limits, and a scoped Role, but lacks a namespace default-deny policy, seccomp profile, and token automount restrictions.\n\n### Security Issues\n- **api-server-policy** (NetworkPolicy, HIGH)\n  - Issue: No namespace-wide default-deny NetworkPolicy exists, so pods not selected by api-server-policy (including any frontend or database pods) accept and send all traffic.\n- **api-server-policy** (NetworkPolicy, MEDIUM)\n  - Issue: The DNS egress rule uses an empty namespaceSelector, allowing UDP/53 to kube-dns in any namespace instead of only the kube-system namespace.\n- **api-server** (Deployment, MEDIUM)\n  - Issue: The pod spec does not set a seccompProfile (for example RuntimeDefault), so the container runs without a syscall filter.\n- **api-server** (Deployment, MEDIUM)\n  - Issue: The pod does not set automountServiceAccountToken: false, so the Kubernetes API token is mounted into the container even though it is not needed.\n- **api-server** (ServiceAccount, MEDIUM)\n  - Issue: The ServiceAccount does not set automountServiceAccountToken: false, so its token is auto-mounted into every pod that uses it.\n- **api-server-role** (Role, LOW)\n  - Issue: The configmaps rule grants the list verb with resourceNames, but list requests are not restricted by resourceNames, so the name restriction is ineffective for list.\n\n## Synthesis & Recommendations\n\n# Container Security (Kubernetes) Report: `secure-app`\n\n## Executive Summary\n\nThis report covers the Kubernetes Security Review of the `secure-app` namespace, specifically the `api-server` Deployment, its ServiceAccount, Role, and the `api-server-policy` NetworkPolicy. The combined risk level is **HIGH**. The workload has strong container hardening, resource limits, and a scoped Role, but the namespace lacks a default-deny NetworkPolicy, and the pod does not restrict its seccomp profile or Kubernetes API token mounting. The generated fix, a namespace-wide `default-deny-all` policy, **must not be applied as written**. It has no allow rules, so it would block DNS and the traffic that frontend and database pods depend on, and it addresses only one of the six findings. The reviewer returned **ESCALATE**. Engineering should first define the required traffic flows, then implement the corrected changes in the priority order below.\n\n## Findings by Domain\n\n### Container Security (Kubernetes): Workload `api-server`\n\nRisk Level: **HIGH**\n\nThe `api-server` workload has tight container hardening, resource limits, and a scoped Role. It lacks a namespace default-deny policy, a seccomp profile, and token automount restrictions.\n\n### RBAC Issues\n\n- ❌ **LOW**: Role `api-server-role` (namespace `secure-app`)\n  - **Resource**: `configmaps` rule\n  - **Issue**: The rule grants the `list` verb with `resourceNames`. Kubernetes does not apply `resourceNames` restrictions to `list` requests, so the name restriction gives a false sense of scoping. Any ConfigMap in the namespace can be listed, including its contents.\n  - **Impact**: The intended least-privilege boundary on ConfigMaps is not enforced.\n  - **Fix needed**: Remove the `list` verb from the `configmaps` rule. If the workload needs specific ConfigMaps, grant `get` with explicit `resourceNames`. If it needs listing, scope access another way, such as a dedicated namespace or a label-scoped design.\n\n### Network Policies\n\n- ❌ **HIGH**: No namespace default-deny in `secure-app`\n  - **Resource**: Namespace `secure-app` (no default-deny NetworkPolicy exists)\n  - **Issue**: Pods not selected by `api-server-policy`, including any frontend or database pods, accept and send all traffic.\n  - **Impact**: Lateral movement is unrestricted within and from the namespace. A compromised pod can reach any service and any external endpoint.\n  - **Fix needed**: Add a default-deny policy only together with explicit allow rules for every legitimate flow, as described in Unified Recommendations. The generated `default-deny-all` manifest alone is unsafe.\n\n- ⚠️ **MEDIUM**: DNS egress is not restricted to `kube-system`\n  - **Resource**: NetworkPolicy `api-server-policy`\n  - **Issue**: The DNS egress rule uses an empty `namespaceSelector`, which permits UDP/53 to kube-dns in any namespace.\n  - **Impact**: Pods selected by this policy can send DNS queries to any DNS service in the cluster, which enables DNS-based data exfiltration and lookups against unintended resolvers.\n  - **Fix needed**: Restrict the DNS egress destination to the `kube-system` namespace and the kube-dns pods.\n\n### Security Contexts\n\n- ⚠️ **MEDIUM**: Seccomp profile not set\n  - **Resource**: Deployment `api-server`\n  - **Missing setting**: `securityContext.seccompProfile.type` (set `RuntimeDefault`)\n  - **Issue**: The container runs without a syscall filter.\n  - **Impact**: The attack surface available to a compromised container is larger than necessary.\n\n### Resource Limits\n\nNo issues identified. The Deployment `api-server` defines resource limits, which the analyzer recorded as part of its tight container hardening.\n\n### Pod Security\n\n- ⚠️ **MEDIUM**: Kubernetes API token mounted into the pod\n  - **Resource**: Deployment `api-server`\n  - **Issue**: `automountServiceAccountToken: false` is not set at the pod spec level, so the API token is mounted even though the workload does not need it.\n  - **Impact**: A compromised container can use the token to query or act on the Kubernetes API within the permissions of `api-server-role`.\n\n- ⚠️ **MEDIUM**: ServiceAccount auto-mounts tokens\n  - **Resource**: ServiceAccount `api-server` (namespace `secure-app`)\n  - **Issue**: `automountServiceAccountToken: false` is not set, so the token is auto-mounted into every pod that uses this ServiceAccount, not just `api-server`.\n  - **Impact**: Any future workload that adopts this ServiceAccount inherits token exposure by default.\n\n### Verdict: ESCALATE\n\nThe reviewer escalated this report for the following reasons:\n\n- The proposed `default-deny-all` NetworkPolicy in `secure-app` selects every pod and denies all ingress and egress. It has no allow rules for frontend or database pods, and it blocks DNS (UDP/53). Applying it would break those workloads.\n- The proposed fix leaves five of six findings unaddressed: the DNS `namespaceSelector`, seccompProfile, automount on the Deployment, automount on the ServiceAccount, and the `configmaps` list/`resourceNames` RBAC rule.\n\nA human decision is required on the traffic flows that must be allowed before a default-deny policy is rolled out.\n\n## Unified Recommendations\n\n### HIGH\n\n1. **Map required traffic flows before enforcing default-deny.** Identify every legitimate flow in `secure-app`: frontend to `api-server`, `api-server` to database, DNS, and any external egress. Record the pod labels for each. Do this first, because the current manifests do not provide these labels.\n\n2. **Apply default-deny only with matching allow rules, in staging first.** Replace the generated `default-deny-all` with the following pattern, adjusted to the labels confirmed in step 1. Roll out in a non-production namespace before `secure-app`, and monitor for dropped connections.\n\n   ```yaml\n   apiVersion: networking.k8s.io/v1\n   kind: NetworkPolicy\n   metadata:\n     name: default-deny-all\n     namespace: secure-app\n   spec:\n     podSelector: {}\n     policyTypes:\n     - Ingress\n     - Egress\n   ```\n\n   Add allow policies alongside it, for example:\n   - Ingress to `api-server` pods (`app: api-server`) from frontend pods on the service port.\n   - Egress from `api-server` pods to database pods on the database port.\n   - Egress from all pods to kube-dns (see the next item).\n\n### MEDIUM\n\n3. **Scope DNS egress to kube-dns in `kube-system`.** In `api-server-policy` (and in every allow policy that permits DNS), replace the empty `namespaceSelector` with the following. This assumes the standard `k8s-app: kube-dns` label, which should be verified in the cluster.\n\n   ```yaml\n   egress:\n   - to:\n     - namespaceSelector:\n         matchLabels:\n           kubernetes.io/metadata.name: kube-system\n       podSelector:\n         matchLabels:\n           k8s-app: kube-dns\n     ports:\n     - protocol: UDP\n       port: 53\n   ```\n\n4. **Set a seccomp profile on `api-server`.** Add the following to the Deployment's pod spec:\n\n   ```yaml\n   spec:\n     template:\n       spec:\n         securityContext:\n           seccompProfile:\n             type: RuntimeDefault\n   ```\n\n5. **Disable token automount on the ServiceAccount and the pod.** Set `automountServiceAccountToken: false` on ServiceAccount `api-server`, and also set it in the Deployment's pod spec. Setting it on both prevents accidental mounting from either direction. If a workload later needs API access, enable it explicitly for that workload only.\n\n### LOW\n\n6. **Remove the `list` verb from the `configmaps` rule in `api-server-role`.** Grant `get` only, with `resourceNames` listing the specific ConfigMaps the workload reads. Confirm with the application team that it does not depend on listing ConfigMaps.\n\n## Verdict Summary\n\n| Workflow | Resource(s) | Verdict | Status |\n|---|---|---|---|\n| Kubernetes Security Review | `api-server` Deployment, `api-server` ServiceAccount, `api-server-role`, `api-server-policy`, namespace `secure-app` | **ESCALATE** | Human review required before applying the generated default-deny fix. The seccomp, automount, DNS scope, and RBAC fixes can proceed independently once reviewed. |\n\n---\n\n*Report generated by Stage 5 Multi-Workflow Coordinator System*\n",
+  "timestamp": "2026-10-26T06:06:08.286Z"
+}
