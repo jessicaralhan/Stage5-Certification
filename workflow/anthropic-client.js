@@ -93,7 +93,7 @@ async function callClaude({ system, user, model = DEFAULT_MODEL, maxTokens = 819
       throw lastError;
     }
 
-    if (!body.usage || !Array.isArray(body.content)) {
+    if (!body.usage || !body.content || !Array.isArray(body.content)) {
       throw new Error(`Anthropic API returned an unexpected response shape: ${JSON.stringify(body).slice(0, 300)}`);
     }
     const text = body.content.map((block) => block.text || '').join('');

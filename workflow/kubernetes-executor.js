@@ -288,8 +288,8 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
     return {
       workflow: 'kubernetes',
       risk_level: agent1Findings.risk_level,
-      security_issues: agent1Findings.security_issues,
-      summary: agent1Findings.summary,
+      security_issues: agent1Findings.security_issues || [],
+      summary: agent1Findings.summary || 'No significant security issues found',
       remediations: currentFixes.fixes,
       verdict: agent3Review.verdict,
       audit_trail: audit,

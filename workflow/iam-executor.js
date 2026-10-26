@@ -293,8 +293,8 @@ async function runIAMWorkflow(policyContent, environment, correlationId) {
     return {
       workflow: 'iam',
       risk_level: agent1Findings.risk_level,
-      access_issues: agent1Findings.access_issues,
-      summary: agent1Findings.summary,
+      access_issues: agent1Findings.access_issues || [],
+      summary: agent1Findings.summary || 'No significant access control issues found',
       remediations: currentFixes.fixes,
       verdict: agent3Review.verdict,
       audit_trail: audit,

@@ -24,6 +24,9 @@ async function executeWorkflow(workflowType, inputFile, environment, correlation
   // Import the appropriate workflow executor
   try {
     const executor = require(path.join(__dirname, `${workflowType}-executor.js`));
+    if (!executor || typeof executor.run !== 'function') {
+      throw new Error(`Executor module does not export run function`);
+    }
     const result = await executor.run(inputFile, environment, correlationId);
     return result;
   } catch (err) {

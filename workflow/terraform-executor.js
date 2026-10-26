@@ -292,9 +292,9 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
     return {
       workflow: 'terraform',
       risk_level: agent1Findings.risk_level,
-      destructive_changes: agent1Findings.destructive_changes,
-      security_exposure: agent1Findings.security_exposure,
-      cost_notes: agent1Findings.cost_notes,
+      destructive_changes: agent1Findings.destructive_changes || [],
+      security_exposure: agent1Findings.security_exposure || [],
+      cost_notes: agent1Findings.cost_notes || [],
       remediations: currentRemediations.remediations,
       verdict: agent3Review.verdict,
       audit_trail: audit,
