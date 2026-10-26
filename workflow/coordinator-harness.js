@@ -1,27 +1,67 @@
 #!/usr/bin/env node
 
 // Coordinator Harness: Multi-workflow orchestration engine
-// Routes input to correct workflow, applies guardrails, returns unified report
+// Invokes coordinator agent to analyze input and route to correct workflow
 
 require('dotenv').config({ override: true });
 
+const fs = require('fs');
 const path = require('path');
+const { callClaude, calculateCost } = require('./anthropic-client');
+const { extractJSON } = require('./json-utils');
 const { generateReport } = require('./report-writer-executor');
 const { determineEscalation, assessSubstance } = require('./escalation-gates');
 const { writeResults } = require('./results-writer');
 
-// Workflow dispatcher tools
+// Workflow executor modules
 const WORKFLOWS = {
-  terraform: './workflow/terraform-executor.js',
-  kubernetes: './workflow/kubernetes-executor.js',
-  iam: './workflow/iam-executor.js',
+  terraform: './terraform-executor.js',
+  kubernetes: './kubernetes-executor.js',
+  iam: './iam-executor.js',
 };
+
+function loadPrompt(name) {
+  return fs.readFileSync(path.join(__dirname, `../prompts/${name}`), 'utf-8');
+}
+
+// Coordinator Agent: Routes input to appropriate workflow
+async function callCoordinator(inputFile, inputContent, environment, correlationId) {
+  process.stdout.write('[Coordinator] Analyzing input to determine workflow type...\n');
+
+  const coordinatorPrompt = loadPrompt('coordinator-agent.md');
+  const coordinatorInput = coordinatorPrompt
+    .replace('{{input_file}}', inputFile)
+    .replace('{{environment}}', environment)
+    .replace('{{input_content}}', inputContent.substring(0, 1500));
+
+  const response = await callClaude({
+    user: coordinatorInput,
+    model: 'claude-haiku-4-5-20251001',
+    maxTokens: 500,
+  });
+
+  // Parse routing decision
+  try {
+    const jsonStr = extractJSON(response.text);
+    const decision = JSON.parse(jsonStr);
+
+    if (!decision.decision || !['terraform', 'kubernetes', 'iam'].includes(decision.decision)) {
+      throw new Error(`Invalid routing decision: ${decision.decision}`);
+    }
+
+    process.stdout.write(`  ✓ Decision: ${decision.decision} (confidence: ${decision.confidence})\n`);
+    process.stdout.write(`  ✓ Reason: ${decision.reason}\n`);
+
+    return decision.decision;
+  } catch (err) {
+    throw new Error(`Coordinator failed to route: ${err.message}`);
+  }
+}
 
 // Execute chosen workflow
 async function executeWorkflow(workflowType, inputFile, environment, correlationId) {
   process.stdout.write(`\n[Orchestrator] Executing ${workflowType} workflow...\n`);
 
-  // Import the appropriate workflow executor
   try {
     const executor = require(path.join(__dirname, `${workflowType}-executor.js`));
     if (!executor || typeof executor.run !== 'function') {
@@ -38,46 +78,48 @@ async function executeWorkflow(workflowType, inputFile, environment, correlation
 async function main() {
   const args = process.argv.slice(2);
 
-  if (args.length < 2) {
+  if (args.length < 1) {
     process.stdout.write(`
-Usage: node coordinator-harness.js <input_file> <workflow_type> [environment]
+Usage: node coordinator-harness.js <input_file> [environment]
 
-Workflow types: terraform, kubernetes, iam
+The coordinator will analyze the input file and route it to the appropriate workflow.
 
 Examples:
-  node coordinator-harness.js config.tf terraform production
-  node coordinator-harness.js manifest.yaml kubernetes staging
-  node coordinator-harness.js policy.json iam production
+  node coordinator-harness.js config.tf production
+  node coordinator-harness.js manifest.yaml staging
+  node coordinator-harness.js policy.json production
 `);
     process.exit(1);
   }
 
   const inputFile = args[0];
-  const workflowType = args[1];
-  const environment = args[2] || 'non-production';
-
-  // Validate workflow type
-  if (!['terraform', 'kubernetes', 'iam'].includes(workflowType)) {
-    process.stderr.write(`Error: Invalid workflow type: ${workflowType}\n`);
-    process.stderr.write(`Valid types: terraform, kubernetes, iam\n`);
-    process.exit(1);
-  }
+  const environment = args[1] || 'non-production';
 
   process.stdout.write(`\n=== Stage 5 Coordinator: Multi-Workflow Orchestration ===\n`);
   process.stdout.write(`Input: ${inputFile}\n`);
-  process.stdout.write(`Workflow: ${workflowType}\n`);
   process.stdout.write(`Environment: ${environment}\n\n`);
 
   try {
-    // Step 1: Execute the chosen workflow
-    process.stdout.write(`[Step 1] Executing ${workflowType} workflow...\n`);
+    // Step 0: Read input file
+    let inputContent;
+    try {
+      inputContent = fs.readFileSync(inputFile, 'utf-8');
+    } catch (err) {
+      throw new Error(`Cannot read input file ${inputFile}: ${err.message}`);
+    }
+
+    // Step 1: Call Coordinator Agent for routing decision
     const runId = `${Date.now()}`;
+    const workflowType = await callCoordinator(inputFile, inputContent, environment, runId);
+
+    // Step 2: Execute the chosen workflow
+    process.stdout.write(`\n[Step 2] Executing ${workflowType} workflow...\n`);
     const workflowResult = await executeWorkflow(workflowType, inputFile, environment, runId);
 
     process.stdout.write(`    ✓ Workflow complete. Risk level: ${workflowResult.risk_level}\n`);
 
-    // Step 2: Check escalation gates
-    process.stdout.write(`[Step 2] Checking escalation gates...\n`);
+    // Step 3: Check escalation gates
+    process.stdout.write(`\n[Step 3] Checking escalation gates...\n`);
 
     const workflowFindings = {};
     workflowFindings[workflowType] = workflowResult;
@@ -105,8 +147,8 @@ Examples:
       });
     }
 
-    // Step 3: Generate report (using Report Writer agent)
-    process.stdout.write(`[Step 3] Generating unified report...\n`);
+    // Step 4: Generate report (using Report Writer agent)
+    process.stdout.write(`\n[Step 4] Generating unified report...\n`);
 
     let report;
     try {
@@ -116,8 +158,8 @@ Examples:
       report = fallbackReportGeneration(workflowType, workflowResult);
     }
 
-    // Step 4: Determine final status
-    process.stdout.write(`[Step 4] Determining final status...\n`);
+    // Step 5: Determine final status
+    process.stdout.write(`\n[Step 5] Determining final status...\n`);
 
     let finalStatus = 'APPROVED';
     if (escalationInfo.shouldEscalate) {

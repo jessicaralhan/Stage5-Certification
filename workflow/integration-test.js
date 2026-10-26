@@ -69,10 +69,10 @@ async function runScenario(scenario) {
     process.stdout.write(`  Input: ${scenario.input}\n`);
     process.stdout.write(`  Environment: ${scenario.environment}\n`);
 
+    // Let coordinator decide workflow based on input analysis (no hardcoding)
     const process_obj = spawn('node', [
       'workflow/coordinator-harness.js',
       scenario.input,
-      scenario.expectedWorkflow,
       scenario.environment,
     ]);
 
