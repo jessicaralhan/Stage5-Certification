@@ -5,37 +5,11 @@ require('dotenv').config({ override: true });
 const fs = require('fs');
 const path = require('path');
 const { callClaude, calculateCost } = require('./anthropic-client');
+const { extractJSON } = require('./json-utils');
 
 // Load prompts
 function loadPrompt(name) {
   return fs.readFileSync(path.join(__dirname, `../prompts/${name}`), 'utf-8');
-}
-
-// Robust JSON extraction from LLM responses
-function extractJSON(text) {
-  // Remove markdown code fences if present
-  let cleaned = text.replace(/```(json)?\s*/g, '').replace(/```\s*/g, '');
-
-  // Find first { and matching }
-  const startIdx = cleaned.indexOf('{');
-  if (startIdx === -1) {
-    throw new Error('No JSON object found');
-  }
-
-  let braceCount = 0;
-  let endIdx = startIdx;
-  for (let i = startIdx; i < cleaned.length; i++) {
-    if (cleaned[i] === '{') braceCount++;
-    if (cleaned[i] === '}') {
-      braceCount--;
-      if (braceCount === 0) {
-        endIdx = i;
-        break;
-      }
-    }
-  }
-
-  return cleaned.substring(startIdx, endIdx + 1);
 }
 
 // Validate Agent 2 generator output for concreteness
@@ -93,33 +67,6 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
       model: 'claude-haiku-5-5',
       maxTokens: 3000,
     });
-
-    // Parse Agent 1 output with robust JSON extraction
-    const extractJSON = (text) => {
-      // Remove markdown code fences if present
-      let cleaned = text.replace(/```(json)?\s*/g, '').replace(/```\s*/g, '');
-
-      // Find first { and matching }
-      const startIdx = cleaned.indexOf('{');
-      if (startIdx === -1) {
-        throw new Error('No JSON object found');
-      }
-
-      let braceCount = 0;
-      let endIdx = startIdx;
-      for (let i = startIdx; i < cleaned.length; i++) {
-        if (cleaned[i] === '{') braceCount++;
-        if (cleaned[i] === '}') {
-          braceCount--;
-          if (braceCount === 0) {
-            endIdx = i;
-            break;
-          }
-        }
-      }
-
-      return cleaned.substring(startIdx, endIdx + 1);
-    };
 
     let agent1Findings;
     try {
@@ -216,64 +163,126 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
     process.stdout.write(`    ✓ Fixes generated: ${(agent2Remediations.remediations || []).length}\n`);
     process.stdout.write(`    ✓ Tokens: ${agent2TotalTokens} | Cost: $${agent2Cost.toFixed(6)}\n`);
 
-    // Step 3: Agent 3 - Adversarial Reviewer
-    process.stdout.write('  → Agent 3: Reviewing fixes...\n');
-
-    const agent3Prompt = loadPrompt('workflow1-terraform-reviewer.md');
-    const agent3Input = agent3Prompt
-      .replace('{{findings}}', JSON.stringify(agent1Findings, null, 2))
-      .replace('{{fixes}}', JSON.stringify(agent2Remediations, null, 2))
-      .replace('{{environment}}', environment);
-
-    const agent3Response = await callClaude({
-      user: agent3Input,
-      model: 'claude-haiku-5-5',
-      maxTokens: 3000,
-    });
-
+    // Step 3: Agent 3 - Adversarial Reviewer with retry loop
     let agent3Review;
-    try {
-      const jsonStr3 = extractJSON(agent3Response.text);
-      agent3Review = JSON.parse(jsonStr3);
-    } catch (err) {
-      throw new Error(`Agent 3 output not valid JSON: ${err.message}. Response: ${agent3Response.text.substring(0, 300)}`);
+    let currentRemediations = agent2Remediations;
+    let reviewAttempt = 1;
+    const maxReviewAttempts = 2;
+
+    while (reviewAttempt <= maxReviewAttempts) {
+      process.stdout.write(`  → Agent 3: Reviewing fixes (attempt ${reviewAttempt}/${maxReviewAttempts})...\n`);
+
+      const agent3Prompt = loadPrompt('workflow1-terraform-reviewer.md');
+      const reviewerContext = reviewAttempt === 1
+        ? `Original findings:\n${JSON.stringify(agent1Findings, null, 2)}\n\nProposed remediations:\n${JSON.stringify(currentRemediations, null, 2)}`
+        : `Original findings:\n${JSON.stringify(agent1Findings, null, 2)}\n\nProposed remediations (revised):\n${JSON.stringify(currentRemediations, null, 2)}\n\nPrevious reviewer challenges:\n${agent3Review.reasoning}`;
+
+      const agent3Input = agent3Prompt
+        .replace('{{findings}}', JSON.stringify(agent1Findings, null, 2))
+        .replace('{{fixes}}', JSON.stringify(currentRemediations, null, 2))
+        .replace('{{environment}}', environment);
+
+      const agent3Response = await callClaude({
+        user: agent3Input,
+        model: 'claude-haiku-5-5',
+        maxTokens: 3000,
+      });
+
+      try {
+        const jsonStr3 = extractJSON(agent3Response.text);
+        agent3Review = JSON.parse(jsonStr3);
+      } catch (err) {
+        throw new Error(`Agent 3 output not valid JSON: ${err.message}. Response: ${agent3Response.text.substring(0, 300)}`);
+      }
+
+      const agent3Cost = calculateCost(agent3Response.model, agent3Response.inputTokens, agent3Response.outputTokens);
+      const agent3TotalTokens = agent3Response.inputTokens + agent3Response.outputTokens;
+      audit.total_tokens += agent3TotalTokens;
+      audit.total_cost += agent3Cost;
+
+      audit.steps.push({
+        step: `agent3_adversarial_reviewer_attempt_${reviewAttempt}`,
+        status: 'COMPLETE',
+        timestamp: new Date().toISOString(),
+        correlation_id: correlationId,
+        model: agent3Response.model,
+        input_tokens: agent3Response.inputTokens,
+        output_tokens: agent3Response.outputTokens,
+        total_tokens: agent3TotalTokens,
+        cost_usd: agent3Cost,
+        verdict: agent3Review.verdict,
+        review: agent3Review,
+      });
+
+      process.stdout.write(`    ✓ Verdict: ${agent3Review.verdict}\n`);
+      process.stdout.write(`    ✓ Tokens: ${agent3TotalTokens} | Cost: $${agent3Cost.toFixed(6)}\n`);
+
+      // If verdict is not REVISE, exit loop
+      if (agent3Review.verdict !== 'REVISE') {
+        break;
+      }
+
+      // If REVISE and not last attempt, re-invoke Agent 2 with feedback
+      if (reviewAttempt < maxReviewAttempts) {
+        process.stdout.write(`  → Agent 2: Revising remediations based on feedback...\n`);
+
+        const agent2RevisePrompt = loadPrompt('workflow1-terraform-generator.md');
+        const agent2ReviseInput = agent2RevisePrompt
+          .replace('{{findings}}', JSON.stringify(agent1Findings, null, 2))
+          .replace('{{environment}}', environment)
+          + `\n\nREVIEWER FEEDBACK:\nThe previous remediation attempt was reviewed and found issues:\n${agent3Review.reasoning}\n\nPlease revise the remediations to address these challenges.`;
+
+        const agent2ReviseResponse = await callClaude({
+          user: agent2ReviseInput,
+          model: 'claude-haiku-5-5',
+          maxTokens: 3000,
+        });
+
+        try {
+          const jsonStr2 = extractJSON(agent2ReviseResponse.text);
+          currentRemediations = JSON.parse(jsonStr2);
+        } catch (err) {
+          throw new Error(`Agent 2 revision output not valid JSON: ${err.message}`);
+        }
+
+        const agent2ReviseCost = calculateCost(agent2ReviseResponse.model, agent2ReviseResponse.inputTokens, agent2ReviseResponse.outputTokens);
+        const agent2ReviseTotalTokens = agent2ReviseResponse.inputTokens + agent2ReviseResponse.outputTokens;
+        audit.total_tokens += agent2ReviseTotalTokens;
+        audit.total_cost += agent2ReviseCost;
+
+        audit.steps.push({
+          step: `agent2_remediation_generator_revision_${reviewAttempt}`,
+          status: 'COMPLETE',
+          timestamp: new Date().toISOString(),
+          correlation_id: correlationId,
+          model: agent2ReviseResponse.model,
+          input_tokens: agent2ReviseResponse.inputTokens,
+          output_tokens: agent2ReviseResponse.outputTokens,
+          total_tokens: agent2ReviseTotalTokens,
+          cost_usd: agent2ReviseCost,
+          remediations: currentRemediations,
+        });
+
+        process.stdout.write(`    ✓ Revised fixes generated\n`);
+        process.stdout.write(`    ✓ Tokens: ${agent2ReviseTotalTokens} | Cost: $${agent2ReviseCost.toFixed(6)}\n`);
+      }
+
+      reviewAttempt++;
     }
-
-    const agent3Cost = calculateCost(agent3Response.model, agent3Response.inputTokens, agent3Response.outputTokens);
-    const agent3TotalTokens = agent3Response.inputTokens + agent3Response.outputTokens;
-    audit.total_tokens += agent3TotalTokens;
-    audit.total_cost += agent3Cost;
-
-    audit.steps.push({
-      step: 'agent3_adversarial_reviewer',
-      status: 'COMPLETE',
-      timestamp: new Date().toISOString(),
-      correlation_id: correlationId,
-      model: agent3Response.model,
-      input_tokens: agent3Response.inputTokens,
-      output_tokens: agent3Response.outputTokens,
-      total_tokens: agent3TotalTokens,
-      cost_usd: agent3Cost,
-      verdict: agent3Review.verdict,
-      review: agent3Review,
-    });
-
-    process.stdout.write(`    ✓ Verdict: ${agent3Review.verdict}\n`);
-    process.stdout.write(`    ✓ Tokens: ${agent3TotalTokens} | Cost: $${agent3Cost.toFixed(6)}\n`);
 
     // Determine final status
     audit.final_risk_level = agent1Findings.risk_level;
-    audit.status = agent3Review.verdict === 'APPROVE' ? 'APPROVED' : agent3Review.verdict === 'REVISE' ? 'REVISE' : 'ESCALATE';
+    audit.status = agent3Review.verdict === 'APPROVE' ? 'APPROVED' : 'ESCALATE';
     audit.timestamp_end = new Date().toISOString();
 
-    // Return comprehensive result
+    // Return comprehensive result with final remediations (may have been revised)
     return {
       workflow: 'terraform',
       risk_level: agent1Findings.risk_level,
       destructive_changes: agent1Findings.destructive_changes,
       security_exposure: agent1Findings.security_exposure,
       cost_notes: agent1Findings.cost_notes,
-      remediations: agent2Remediations.remediations,
+      remediations: currentRemediations.remediations,
       verdict: agent3Review.verdict,
       audit_trail: audit,
     };

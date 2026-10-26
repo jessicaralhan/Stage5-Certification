@@ -5,36 +5,10 @@ require('dotenv').config({ override: true });
 const fs = require('fs');
 const path = require('path');
 const { callClaude, calculateCost } = require('./anthropic-client');
+const { extractJSON } = require('./json-utils');
 
 function loadPrompt(name) {
   return fs.readFileSync(path.join(__dirname, `../prompts/${name}`), 'utf-8');
-}
-
-// Robust JSON extraction from LLM responses
-function extractJSON(text) {
-  // Remove markdown code fences if present
-  let cleaned = text.replace(/```(json)?\s*/g, '').replace(/```\s*/g, '');
-
-  // Find first { and matching }
-  const startIdx = cleaned.indexOf('{');
-  if (startIdx === -1) {
-    throw new Error('No JSON object found');
-  }
-
-  let braceCount = 0;
-  let endIdx = startIdx;
-  for (let i = startIdx; i < cleaned.length; i++) {
-    if (cleaned[i] === '{') braceCount++;
-    if (cleaned[i] === '}') {
-      braceCount--;
-      if (braceCount === 0) {
-        endIdx = i;
-        break;
-      }
-    }
-  }
-
-  return cleaned.substring(startIdx, endIdx + 1);
 }
 
 // Validate Agent 2 generator output for concreteness (IAM)
@@ -188,54 +162,113 @@ async function runIAMWorkflow(policyContent, environment, correlationId) {
     process.stdout.write(`    ✓ Fixes generated: ${(agent2Fixes.fixes || []).length}\n`);
     process.stdout.write(`    ✓ Tokens: ${agent2TotalTokens} | Cost: $${agent2Cost.toFixed(6)}\n`);
 
-    // Step 3: Agent 3 - Adversarial Auditor
-    process.stdout.write('  → Agent 3C: Reviewing fixes...\n');
-
-    const agent3Prompt = loadPrompt('workflow3-iam-reviewer.md');
-    const agent3Input = agent3Prompt
-      .replace('{{findings}}', JSON.stringify(agent1Findings, null, 2))
-      .replace('{{fixes}}', JSON.stringify(agent2Fixes, null, 2))
-      .replace('{{cloud_platform}}', 'aws')
-      .replace('{{environment}}', environment);
-
-    const agent3Response = await callClaude({
-      user: agent3Input,
-      model: 'claude-haiku-5-5',
-      maxTokens: 3000,
-    });
-
+    // Step 3: Agent 3 - Adversarial Auditor with retry loop
     let agent3Review;
-    try {
-      const jsonStr3 = extractJSON(agent3Response.text);
-      agent3Review = JSON.parse(jsonStr3);
-    } catch (err) {
-      throw new Error(`Agent 3 output not valid JSON: ${err.message}. Response: ${agent3Response.text.substring(0, 300)}`);
+    let currentFixes = agent2Fixes;
+    let reviewAttempt = 1;
+    const maxReviewAttempts = 2;
+
+    while (reviewAttempt <= maxReviewAttempts) {
+      process.stdout.write(`  → Agent 3C: Reviewing fixes (attempt ${reviewAttempt}/${maxReviewAttempts})...\n`);
+
+      const agent3Prompt = loadPrompt('workflow3-iam-reviewer.md');
+      const agent3Input = agent3Prompt
+        .replace('{{findings}}', JSON.stringify(agent1Findings, null, 2))
+        .replace('{{fixes}}', JSON.stringify(currentFixes, null, 2))
+        .replace('{{cloud_platform}}', 'aws')
+        .replace('{{environment}}', environment);
+
+      const agent3Response = await callClaude({
+        user: agent3Input,
+        model: 'claude-haiku-5-5',
+        maxTokens: 3000,
+      });
+
+      try {
+        const jsonStr3 = extractJSON(agent3Response.text);
+        agent3Review = JSON.parse(jsonStr3);
+      } catch (err) {
+        throw new Error(`Agent 3 output not valid JSON: ${err.message}. Response: ${agent3Response.text.substring(0, 300)}`);
+      }
+
+      const agent3Cost = calculateCost(agent3Response.model, agent3Response.inputTokens, agent3Response.outputTokens);
+      const agent3TotalTokens = agent3Response.inputTokens + agent3Response.outputTokens;
+      audit.total_tokens += agent3TotalTokens;
+      audit.total_cost += agent3Cost;
+
+      audit.steps.push({
+        step: `agent3_iam_reviewer_attempt_${reviewAttempt}`,
+        status: 'COMPLETE',
+        timestamp: new Date().toISOString(),
+        correlation_id: correlationId,
+        model: agent3Response.model,
+        input_tokens: agent3Response.inputTokens,
+        output_tokens: agent3Response.outputTokens,
+        total_tokens: agent3TotalTokens,
+        cost_usd: agent3Cost,
+        verdict: agent3Review.verdict,
+        review: agent3Review,
+      });
+
+      process.stdout.write(`    ✓ Verdict: ${agent3Review.verdict}\n`);
+      process.stdout.write(`    ✓ Tokens: ${agent3TotalTokens} | Cost: $${agent3Cost.toFixed(6)}\n`);
+
+      // If verdict is not REVISE, exit loop
+      if (agent3Review.verdict !== 'REVISE') {
+        break;
+      }
+
+      // If REVISE and not last attempt, re-invoke Agent 2 with feedback
+      if (reviewAttempt < maxReviewAttempts) {
+        process.stdout.write(`  → Agent 2C: Revising fixes based on feedback...\n`);
+
+        const agent2RevisePrompt = loadPrompt('workflow3-iam-generator.md');
+        const agent2ReviseInput = agent2RevisePrompt
+          .replace('{{findings}}', JSON.stringify(agent1Findings, null, 2))
+          .replace('{{cloud_platform}}', 'aws')
+          .replace('{{environment}}', environment)
+          + `\n\nREVIEWER FEEDBACK:\nThe previous policy changes were reviewed and found issues:\n${agent3Review.reasoning}\n\nPlease revise the fixes to address these challenges.`;
+
+        const agent2ReviseResponse = await callClaude({
+          user: agent2ReviseInput,
+          model: 'claude-haiku-5-5',
+          maxTokens: 3000,
+        });
+
+        try {
+          const jsonStr2 = extractJSON(agent2ReviseResponse.text);
+          currentFixes = JSON.parse(jsonStr2);
+        } catch (err) {
+          throw new Error(`Agent 2 revision output not valid JSON: ${err.message}`);
+        }
+
+        const agent2ReviseCost = calculateCost(agent2ReviseResponse.model, agent2ReviseResponse.inputTokens, agent2ReviseResponse.outputTokens);
+        const agent2ReviseTotalTokens = agent2ReviseResponse.inputTokens + agent2ReviseResponse.outputTokens;
+        audit.total_tokens += agent2ReviseTotalTokens;
+        audit.total_cost += agent2ReviseCost;
+
+        audit.steps.push({
+          step: `agent2_iam_generator_revision_${reviewAttempt}`,
+          status: 'COMPLETE',
+          timestamp: new Date().toISOString(),
+          correlation_id: correlationId,
+          model: agent2ReviseResponse.model,
+          input_tokens: agent2ReviseResponse.inputTokens,
+          output_tokens: agent2ReviseResponse.outputTokens,
+          total_tokens: agent2ReviseTotalTokens,
+          cost_usd: agent2ReviseCost,
+          fixes: currentFixes,
+        });
+
+        process.stdout.write(`    ✓ Revised fixes generated\n`);
+        process.stdout.write(`    ✓ Tokens: ${agent2ReviseTotalTokens} | Cost: $${agent2ReviseCost.toFixed(6)}\n`);
+      }
+
+      reviewAttempt++;
     }
 
-    const agent3Cost = calculateCost(agent3Response.model, agent3Response.inputTokens, agent3Response.outputTokens);
-    const agent3TotalTokens = agent3Response.inputTokens + agent3Response.outputTokens;
-    audit.total_tokens += agent3TotalTokens;
-    audit.total_cost += agent3Cost;
-
-    audit.steps.push({
-      step: 'agent3_iam_reviewer',
-      status: 'COMPLETE',
-      timestamp: new Date().toISOString(),
-      correlation_id: correlationId,
-      model: agent3Response.model,
-      input_tokens: agent3Response.inputTokens,
-      output_tokens: agent3Response.outputTokens,
-      total_tokens: agent3TotalTokens,
-      cost_usd: agent3Cost,
-      verdict: agent3Review.verdict,
-      review: agent3Review,
-    });
-
-    process.stdout.write(`    ✓ Verdict: ${agent3Review.verdict}\n`);
-    process.stdout.write(`    ✓ Tokens: ${agent3TotalTokens} | Cost: $${agent3Cost.toFixed(6)}\n`);
-
     audit.final_risk_level = agent1Findings.risk_level;
-    audit.status = agent3Review.verdict === 'APPROVE' ? 'APPROVED' : agent3Review.verdict === 'REVISE' ? 'REVISE' : 'ESCALATE';
+    audit.status = agent3Review.verdict === 'APPROVE' ? 'APPROVED' : 'ESCALATE';
     audit.timestamp_end = new Date().toISOString();
 
     return {
@@ -243,7 +276,7 @@ async function runIAMWorkflow(policyContent, environment, correlationId) {
       risk_level: agent1Findings.risk_level,
       access_issues: agent1Findings.access_issues,
       summary: agent1Findings.summary,
-      fixes: agent2Fixes.fixes,
+      fixes: currentFixes.fixes,
       verdict: agent3Review.verdict,
       audit_trail: audit,
     };

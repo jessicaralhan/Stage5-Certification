@@ -132,6 +132,14 @@ Examples:
     const substanceLevel = assessSubstance(workflowFindings, environment);
     const escalationInfo = determineEscalation(workflowFindings, environment);
 
+    // Check substance-based elevation: if toy, escalate
+    // Note: In this architecture, each run executes exactly one workflow, so the 2+ peripheral check
+    // would require multiple independent runs to be evaluated together (outside this coordinator)
+    if (substanceLevel === 'toy') {
+      escalationInfo.shouldEscalate = true;
+      escalationInfo.reasons.push(`Substance-based elevation: Workflow substance level is toy (no significant findings)`);
+    }
+
     process.stdout.write(`    Substance level: ${substanceLevel}\n`);
     process.stdout.write(`    Should escalate: ${escalationInfo.shouldEscalate ? 'YES' : 'NO'}\n`);
 
