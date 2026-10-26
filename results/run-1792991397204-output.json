@@ -1,0 +1,236 @@
+{
+  "run_id": "1792991397204",
+  "workflow_type": "iam",
+  "workflow_executed": "iam",
+  "environment": "production",
+  "workflow_findings": {
+    "workflow": "iam",
+    "risk_level": "CRITICAL",
+    "access_issues": [
+      {
+        "type": "overly_broad_permissions",
+        "severity": "CRITICAL",
+        "affected_principals": [
+          "Not specified in policy document (Sid: AllowEverything)"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "Statement AllowEverything grants Action \"*\" on Resource \"*\", which permits every AWS API action, including IAM actions that enable privilege escalation and destructive changes in production."
+      },
+      {
+        "type": "missing_resource_boundaries",
+        "severity": "CRITICAL",
+        "affected_principals": [
+          "Not specified in policy document (Sid: AllowEverything)"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "Statement AllowEverything applies to all resources with Resource \"*\" and no ARN scoping, so it covers databases, encryption keys, security groups, and every other account resource."
+      },
+      {
+        "type": "missing_mfa",
+        "severity": "CRITICAL",
+        "affected_principals": [
+          "Not specified in policy document (Sid: AllowEverything)"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "Statement AllowEverything grants create, delete, and modify actions with no aws:MultiFactorAuthPresent condition, so these powerful actions do not require MFA."
+      },
+      {
+        "type": "missing_conditions",
+        "severity": "HIGH",
+        "affected_principals": [
+          "Not specified in policy document (Sid: AllowEverything)"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "Statement AllowEverything has no condition keys such as aws:SourceIp, aws:SourceVpce, aws:RequestedRegion, or aws:PrincipalTag to restrict where, when, or how the permissions can be used."
+      },
+      {
+        "type": "session_ttl",
+        "severity": "MEDIUM",
+        "affected_principals": [
+          "Not specified in policy document (Sid: AllowEverything)"
+        ],
+        "affected_resources": [
+          "*"
+        ],
+        "description": "The document contains no session policy or session duration constraint, so any credentials that use this unrestricted permission set may remain valid for the maximum session duration."
+      }
+    ],
+    "summary": "The policy grants unrestricted administrator access to all actions on all resources with no MFA, source, or session constraints, which is unacceptable for a production environment.",
+    "fixes": [
+      {
+        "issue": "AllowEverything grants Action \"*\" on Resource \"*\", permitting every AWS API action including IAM escalation and destructive changes",
+        "fix_type": "permission_narrowing",
+        "concrete_policy_change": "Delete Statement AllowEverything. Add: {\"Sid\":\"ScopedProdOperations\",\"Effect\":\"Allow\",\"Action\":[\"ec2:DescribeInstances\",\"ec2:DescribeSecurityGroups\",\"s3:GetObject\",\"s3:PutObject\",\"logs:CreateLogStream\",\"logs:PutLogEvents\",\"cloudwatch:GetMetricData\"],\"Resource\":\"<see resource_scoping fix>\"}. Preserved: describing EC2 and security groups, reading and writing app artifacts, writing CloudWatch logs and reading metrics. IAM, KMS, RDS, and Organizations actions are no longer granted.",
+        "severity": "CRITICAL"
+      },
+      {
+        "issue": "AllowEverything applies to all account resources via Resource \"*\" with no ARN scoping, covering databases, KMS keys, and security groups",
+        "fix_type": "resource_scoping",
+        "concrete_policy_change": "Replace Resource \"*\" in ScopedProdOperations with: [\"arn:aws:ec2:us-east-1:123456789012:instance/*\",\"arn:aws:ec2:us-east-1:123456789012:security-group/*\",\"arn:aws:s3:::prod-app-artifacts/*\",\"arn:aws:logs:us-east-1:123456789012:log-group:/prod/app/*\",\"arn:aws:cloudwatch:us-east-1:123456789012:*\"]. Preserved: operations on the prod application bucket, its log group, and EC2 inspection in us-east-1. Databases, KMS keys, and other accounts' resources are no longer reachable.",
+        "severity": "CRITICAL"
+      },
+      {
+        "issue": "Create, delete, and modify actions in AllowEverything have no aws:MultiFactorAuthPresent condition",
+        "fix_type": "mfa_requirement",
+        "concrete_policy_change": "Add a second statement: {\"Sid\":\"RequireMFAForMutations\",\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\",\"logs:PutLogEvents\"],\"Resource\":[\"arn:aws:s3:::prod-app-artifacts/*\",\"arn:aws:logs:us-east-1:123456789012:log-group:/prod/app/*\"],\"Condition\":{\"BoolIfExists\":{\"aws:MultiFactorAuthPresent\":\"true\"},\"NumericLessThan\":{\"aws:MultiFactorAuthAge\":\"3600\"}}}. Preserved: read-only EC2 and S3 access works without MFA, and writes to the artifact bucket and logs proceed after MFA sign-in within the last hour.",
+        "severity": "CRITICAL"
+      }
+    ],
+    "verdict": "ESCALATE",
+    "audit_trail": {
+      "workflow": "iam",
+      "correlation_id": "1792991397204",
+      "timestamp_start": "2026-10-26T05:09:57.210Z",
+      "steps": [
+        {
+          "step": "agent1_iam_analyzer",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T05:10:04.472Z",
+          "correlation_id": "1792991397204",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1238,
+          "output_tokens": 1411,
+          "total_tokens": 2649,
+          "cost_usd": 0.0066344,
+          "findings": {
+            "access_issues": [
+              {
+                "type": "overly_broad_permissions",
+                "severity": "CRITICAL",
+                "affected_principals": [
+                  "Not specified in policy document (Sid: AllowEverything)"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "Statement AllowEverything grants Action \"*\" on Resource \"*\", which permits every AWS API action, including IAM actions that enable privilege escalation and destructive changes in production."
+              },
+              {
+                "type": "missing_resource_boundaries",
+                "severity": "CRITICAL",
+                "affected_principals": [
+                  "Not specified in policy document (Sid: AllowEverything)"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "Statement AllowEverything applies to all resources with Resource \"*\" and no ARN scoping, so it covers databases, encryption keys, security groups, and every other account resource."
+              },
+              {
+                "type": "missing_mfa",
+                "severity": "CRITICAL",
+                "affected_principals": [
+                  "Not specified in policy document (Sid: AllowEverything)"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "Statement AllowEverything grants create, delete, and modify actions with no aws:MultiFactorAuthPresent condition, so these powerful actions do not require MFA."
+              },
+              {
+                "type": "missing_conditions",
+                "severity": "HIGH",
+                "affected_principals": [
+                  "Not specified in policy document (Sid: AllowEverything)"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "Statement AllowEverything has no condition keys such as aws:SourceIp, aws:SourceVpce, aws:RequestedRegion, or aws:PrincipalTag to restrict where, when, or how the permissions can be used."
+              },
+              {
+                "type": "session_ttl",
+                "severity": "MEDIUM",
+                "affected_principals": [
+                  "Not specified in policy document (Sid: AllowEverything)"
+                ],
+                "affected_resources": [
+                  "*"
+                ],
+                "description": "The document contains no session policy or session duration constraint, so any credentials that use this unrestricted permission set may remain valid for the maximum session duration."
+              }
+            ],
+            "summary": "The policy grants unrestricted administrator access to all actions on all resources with no MFA, source, or session constraints, which is unacceptable for a production environment.",
+            "risk_level": "CRITICAL"
+          }
+        },
+        {
+          "step": "agent2_iam_generator",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T05:10:16.886Z",
+          "correlation_id": "1792991397204",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 1853,
+          "output_tokens": 2709,
+          "total_tokens": 4562,
+          "cost_usd": 0.0123184,
+          "fixes": {
+            "fixes": [
+              {
+                "issue": "AllowEverything grants Action \"*\" on Resource \"*\", permitting every AWS API action including IAM escalation and destructive changes",
+                "fix_type": "permission_narrowing",
+                "concrete_policy_change": "Delete Statement AllowEverything. Add: {\"Sid\":\"ScopedProdOperations\",\"Effect\":\"Allow\",\"Action\":[\"ec2:DescribeInstances\",\"ec2:DescribeSecurityGroups\",\"s3:GetObject\",\"s3:PutObject\",\"logs:CreateLogStream\",\"logs:PutLogEvents\",\"cloudwatch:GetMetricData\"],\"Resource\":\"<see resource_scoping fix>\"}. Preserved: describing EC2 and security groups, reading and writing app artifacts, writing CloudWatch logs and reading metrics. IAM, KMS, RDS, and Organizations actions are no longer granted.",
+                "severity": "CRITICAL"
+              },
+              {
+                "issue": "AllowEverything applies to all account resources via Resource \"*\" with no ARN scoping, covering databases, KMS keys, and security groups",
+                "fix_type": "resource_scoping",
+                "concrete_policy_change": "Replace Resource \"*\" in ScopedProdOperations with: [\"arn:aws:ec2:us-east-1:123456789012:instance/*\",\"arn:aws:ec2:us-east-1:123456789012:security-group/*\",\"arn:aws:s3:::prod-app-artifacts/*\",\"arn:aws:logs:us-east-1:123456789012:log-group:/prod/app/*\",\"arn:aws:cloudwatch:us-east-1:123456789012:*\"]. Preserved: operations on the prod application bucket, its log group, and EC2 inspection in us-east-1. Databases, KMS keys, and other accounts' resources are no longer reachable.",
+                "severity": "CRITICAL"
+              },
+              {
+                "issue": "Create, delete, and modify actions in AllowEverything have no aws:MultiFactorAuthPresent condition",
+                "fix_type": "mfa_requirement",
+                "concrete_policy_change": "Add a second statement: {\"Sid\":\"RequireMFAForMutations\",\"Effect\":\"Allow\",\"Action\":[\"s3:PutObject\",\"logs:PutLogEvents\"],\"Resource\":[\"arn:aws:s3:::prod-app-artifacts/*\",\"arn:aws:logs:us-east-1:123456789012:log-group:/prod/app/*\"],\"Condition\":{\"BoolIfExists\":{\"aws:MultiFactorAuthPresent\":\"true\"},\"NumericLessThan\":{\"aws:MultiFactorAuthAge\":\"3600\"}}}. Preserved: read-only EC2 and S3 access works without MFA, and writes to the artifact bucket and logs proceed after MFA sign-in within the last hour.",
+                "severity": "CRITICAL"
+              }
+            ]
+          }
+        },
+        {
+          "step": "agent3_iam_reviewer_attempt_1",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T05:10:23.040Z",
+          "correlation_id": "1792991397204",
+          "model": "claude-haiku-5-5",
+          "input_tokens": 2958,
+          "output_tokens": 991,
+          "total_tokens": 3949,
+          "cost_usd": 0.0063304,
+          "verdict": "ESCALATE",
+          "review": {
+            "verdict": "ESCALATE",
+            "reasoning": "The MFA fix is ineffective because the unconditioned ScopedProdOperations statement already grants s3:PutObject and logs:PutLogEvents without MFA, and BoolIfExists passes when the MFA key is absent, so the mutations stay reachable without MFA. The resource-scoping ARNs also cannot match ec2:DescribeInstances or ec2:DescribeSecurityGroups, which need Resource \"*\", so legitimate inspection would break, and the fix references a placeholder (\"<see resource_scoping fix>\"). The principal is unidentified and the role is production with high blast radius, so the change requires human sign-off and a rewritten, verified policy before any apply."
+          }
+        }
+      ],
+      "status": "ESCALATE",
+      "total_tokens": 11160,
+      "total_cost": 0.0252832,
+      "final_risk_level": "CRITICAL",
+      "timestamp_end": "2026-10-26T05:10:23.041Z"
+    }
+  },
+  "escalation_info": {
+    "shouldEscalate": true,
+    "reasons": [
+      "iam: Risk level is CRITICAL",
+      "iam: HIGH risk in production environment",
+      "iam: 1 wildcard IAM permission(s) found",
+      "iam: Reviewer verdict is ESCALATE"
+    ],
+    "recommendation": "HUMAN_REVIEW_REQUIRED"
+  },
+  "substance_level": "core",
+  "final_status": "ESCALATED",
+  "report": "# Infrastructure & Security Review Report\n\n**Combined Risk Level**: CRITICAL\n\n## Access Control (IAM) Findings\n\n**Risk Level**: CRITICAL\n\nThe policy grants unrestricted administrator access to all actions on all resources with no MFA, source, or session constraints, which is unacceptable for a production environment.\n\n### Access Issues\n- **overly_broad_permissions** (CRITICAL): Statement AllowEverything grants Action \"*\" on Resource \"*\", which permits every AWS API action, including IAM actions that enable privilege escalation and destructive changes in production.\n- **missing_resource_boundaries** (CRITICAL): Statement AllowEverything applies to all resources with Resource \"*\" and no ARN scoping, so it covers databases, encryption keys, security groups, and every other account resource.\n- **missing_mfa** (CRITICAL): Statement AllowEverything grants create, delete, and modify actions with no aws:MultiFactorAuthPresent condition, so these powerful actions do not require MFA.\n- **missing_conditions** (HIGH): Statement AllowEverything has no condition keys such as aws:SourceIp, aws:SourceVpce, aws:RequestedRegion, or aws:PrincipalTag to restrict where, when, or how the permissions can be used.\n- **session_ttl** (MEDIUM): The document contains no session policy or session duration constraint, so any credentials that use this unrestricted permission set may remain valid for the maximum session duration.\n\n## Synthesis & Recommendations\n\n# Infrastructure Security Review Report\n\n## Executive Summary\n\nThis review covers a single IAM policy audit, which triggered the Access Control (IAM) workflow. The policy statement `AllowEverything` grants `Action: \"*\"` on `Resource: \"*\"` with no MFA, source, region, or session constraints. The combined risk level is **CRITICAL**, and the verdict is **ESCALATE**. The policy must not be applied in production in its current form. The attached principal is not identified in the document, so the first action is to determine which identity holds this policy. The proposed remediation was also reviewed and found unsafe as written: its MFA control can be bypassed, its resource ARNs would break required EC2 and CloudWatch inspection, and one ARN reference is unresolved. A corrected, validated policy and human sign-off are required before any change is applied.\n\n---\n\n## Access Control (IAM) Findings\n\nRisk Level: **CRITICAL**\n\nThe policy grants unrestricted administrator access to all actions on all resources with no MFA, source, or session constraints, which is unacceptable for a production environment.\n\n### Overly Broad Permissions\n\n❌ **CRITICAL**: Statement `AllowEverything` grants every AWS API action on every resource.\n- **Principal**: Not identified in the policy document. Must be determined before remediation.\n- **Current scope**: `Action: \"*\"`, `Resource: \"*\"`\n- **Issue**: Permits every AWS API action, including IAM actions that enable privilege escalation and destructive changes in production.\n- **Least-privilege target**: Remove `AllowEverything`. Replace it with a scoped statement limited to the operations the principal actually performs (for example, `ec2:DescribeInstances`, `ec2:DescribeSecurityGroups`, `s3:GetObject`, `s3:PutObject` on the application artifact bucket, and `logs:*` writes to the application log group).\n- **Note on the proposed fix**: The replacement statement `ScopedProdOperations` in the generated fix still grants `s3:PutObject` and `logs:PutLogEvents` without an MFA condition. It does not fully achieve least privilege until the issues in the MFA section are corrected.\n\n### Missing Resource Boundaries\n\n❌ **CRITICAL**: Statement `AllowEverything` applies to all account resources.\n- **Affected resources**: All resources in the account, including databases, KMS keys, security groups, and other accounts' resources reachable through trust relationships.\n- **Issue**: No ARN scoping exists, so the principal can read, modify, or delete any resource type.\n- **Required correction**:\n  - Scope mutating actions to explicit ARNs, such as `arn:aws:s3:::prod-app-artifacts/*` and `arn:aws:logs:us-east-1:<account-id>:log-group:/prod/app/*`.\n  - Do not scope `ec2:Describe*` or `cloudwatch:GetMetricData` to specific ARNs. These actions generally do not support resource-level permissions and must use `\"Resource\": \"*\"`. The proposed ARN list would break them.\n  - Confirm the account ID. The proposed ARNs use `123456789012`, which must be verified against the real account before use.\n  - Remove the unresolved reference `\"<see resource_scoping fix>\"` from `ScopedProdOperations` and substitute the final resource list.\n\n### Missing MFA/Conditions\n\n❌ **CRITICAL**: Create, delete, and modify actions have no MFA requirement.\n- **Principal**: Not identified in the policy document.\n- **Gap**: No `aws:MultiFactorAuthPresent` condition on mutating actions.\n- **Issue with proposed fix**: The fix adds a `RequireMFAForMutations` statement using `BoolIfExists` on `aws:MultiFactorAuthPresent`. `BoolIfExists` evaluates to true when the key is absent, so the condition does not enforce MFA. In addition, `s3:PutObject` and `logs:PutLogEvents` remain granted without MFA in the unconditioned `ScopedProdOperations` statement. The MFA control can therefore be bypassed entirely.\n- **Required correction**: Remove `s3:PutObject` and `logs:PutLogEvents` from the unconditioned statement. Grant them only in a statement that uses `Bool` (not `BoolIfExists`) with `\"aws:MultiFactorAuthPresent\": \"true\"` and `NumericLessThan` on `aws:MultiFactorAuthAge` set to `3600`.\n\n❌ **HIGH**: No contextual conditions restrict where, when, or how permissions are used.\n- **Gap**: No `aws:SourceIp`, `aws:SourceVpce`, `aws:RequestedRegion`, or `aws:PrincipalTag` conditions.\n- **Impact**: The permissions can be exercised from any network location, in any region, by any tagged or untagged session.\n- **Required correction**: Add `aws:RequestedRegion` restricted to `us-east-1` (or the approved regions) and, where workloads run in known networks, `aws:SourceVpce` or `aws:SourceIp`. Validate that global services used by the principal are handled correctly by the region condition.\n\n### Session Credential Issues\n\n⚠️ **MEDIUM**: No session policy or session duration constraint exists.\n- **Policy**: `AllowEverything`\n- **Issue**: Credentials that use this permission set may remain valid for the maximum session duration. Because the permission set is unrestricted, a leaked or misused session has maximum impact for that entire period.\n- **Required corre\n\n---\n\n*Report generated by Stage 5 Multi-Workflow Coordinator System*\n",
+  "timestamp": "2026-10-26T05:10:41.401Z"
+}
