@@ -89,6 +89,10 @@ function assessSubstance(workflowFindings, environment) {
     f => f && f.destructive_changes && f.destructive_changes.length > 0
   );
 
+  const hasSecurityExposure = Object.values(workflowFindings).some(
+    f => f && f.security_exposure && f.security_exposure.length > 0
+  );
+
   const hasSecurityIssues = Object.values(workflowFindings).some(
     f => f && f.security_issues && f.security_issues.length > 0
   );
@@ -97,13 +101,13 @@ function assessSubstance(workflowFindings, environment) {
     f => f && f.access_issues && f.access_issues.length > 0
   );
 
-  // Core: Production with destructive changes or security issues
-  if (environment === 'production' && (hasProductionWork || hasSecurityIssues || hasAccessIssues)) {
+  // Core: Production with real findings (destructive changes, security exposure, or access issues)
+  if (environment === 'production' && (hasProductionWork || hasSecurityExposure || hasSecurityIssues || hasAccessIssues)) {
     return 'core';
   }
 
   // Peripheral: Non-production but has real findings
-  if (hasSecurityIssues || hasAccessIssues) {
+  if (hasSecurityExposure || hasSecurityIssues || hasAccessIssues) {
     return 'peripheral';
   }
 

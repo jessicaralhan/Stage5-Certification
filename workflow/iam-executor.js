@@ -172,11 +172,17 @@ async function runIAMWorkflow(policyContent, environment, correlationId) {
       process.stdout.write(`  → Agent 3C: Reviewing fixes (attempt ${reviewAttempt}/${maxReviewAttempts})...\n`);
 
       const agent3Prompt = loadPrompt('workflow3-iam-reviewer.md');
-      const agent3Input = agent3Prompt
+
+      let agent3Input = agent3Prompt
         .replace('{{findings}}', JSON.stringify(agent1Findings, null, 2))
         .replace('{{fixes}}', JSON.stringify(currentFixes, null, 2))
         .replace('{{cloud_platform}}', 'aws')
         .replace('{{environment}}', environment);
+
+      // On retry attempts, append previous reviewer feedback for Agent 3 to re-examine
+      if (reviewAttempt > 1) {
+        agent3Input += `\n\nPREVIOUS REVIEWER ASSESSMENT (Attempt ${reviewAttempt - 1}):\n${agent3Review.reasoning}\n\nPlease re-examine the revised fixes against these previously raised challenges.`;
+      }
 
       const agent3Response = await callClaude({
         user: agent3Input,

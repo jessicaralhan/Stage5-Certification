@@ -171,14 +171,16 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
       process.stdout.write(`  → Agent 3: Reviewing fixes (attempt ${reviewAttempt}/${maxReviewAttempts})...\n`);
 
       const agent3Prompt = loadPrompt('workflow1-terraform-reviewer.md');
-      const reviewerContext = reviewAttempt === 1
-        ? `Original findings:\n${JSON.stringify(agent1Findings, null, 2)}\n\nProposed remediations:\n${JSON.stringify(currentRemediations, null, 2)}`
-        : `Original findings:\n${JSON.stringify(agent1Findings, null, 2)}\n\nProposed remediations (revised):\n${JSON.stringify(currentRemediations, null, 2)}\n\nPrevious reviewer challenges:\n${agent3Review.reasoning}`;
 
-      const agent3Input = agent3Prompt
+      let agent3Input = agent3Prompt
         .replace('{{findings}}', JSON.stringify(agent1Findings, null, 2))
         .replace('{{fixes}}', JSON.stringify(currentRemediations, null, 2))
         .replace('{{environment}}', environment);
+
+      // On retry attempts, append previous reviewer feedback for Agent 3 to re-examine
+      if (reviewAttempt > 1) {
+        agent3Input += `\n\nPREVIOUS REVIEWER ASSESSMENT (Attempt ${reviewAttempt - 1}):\n${agent3Review.reasoning}\n\nPlease re-examine the revised remediations against these previously raised challenges.`;
+      }
 
       const agent3Response = await callClaude({
         user: agent3Input,

@@ -11,13 +11,38 @@ function extractJSON(text) {
 
   let braceCount = 0;
   let endIdx = startIdx;
+  let inString = false;
+  let escapeNext = false;
+
   for (let i = startIdx; i < cleaned.length; i++) {
-    if (cleaned[i] === '{') braceCount++;
-    if (cleaned[i] === '}') {
-      braceCount--;
-      if (braceCount === 0) {
-        endIdx = i;
-        break;
+    const char = cleaned[i];
+
+    // Handle escape sequences in strings
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+
+    if (char === '\\' && inString) {
+      escapeNext = true;
+      continue;
+    }
+
+    // Toggle string state on unescaped quotes
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    // Only count braces outside of strings
+    if (!inString) {
+      if (char === '{') braceCount++;
+      if (char === '}') {
+        braceCount--;
+        if (braceCount === 0) {
+          endIdx = i;
+          break;
+        }
       }
     }
   }
