@@ -1,0 +1,188 @@
+{
+  "run_id": "1793003314584",
+  "workflow_type": "kubernetes",
+  "workflow_executed": "kubernetes",
+  "environment": "production",
+  "workflow_findings": {
+    "workflow": "kubernetes",
+    "risk_level": "HIGH",
+    "security_issues": [
+      {
+        "type": "network_policy",
+        "severity": "HIGH",
+        "resource_kind": "NetworkPolicy",
+        "resource_name": "api-server-policy",
+        "namespace": "secure-app",
+        "description": "NetworkPolicy egress rule allows all traffic to any namespace via empty namespaceSelector, creating an overly permissive egress path beyond the intended database and DNS destinations."
+      },
+      {
+        "type": "pod_security",
+        "severity": "MEDIUM",
+        "resource_kind": "Deployment",
+        "resource_name": "api-server",
+        "namespace": "secure-app",
+        "description": "Deployment uses imagePullPolicy: Always which forces image re-pull on every pod restart, increasing attack surface and deployment latency; consider using IfNotPresent or pinning to a digest."
+      },
+      {
+        "type": "security_context",
+        "severity": "MEDIUM",
+        "resource_kind": "Deployment",
+        "resource_name": "api-server",
+        "namespace": "secure-app",
+        "description": "Container lacks seccomp profile configuration, leaving syscall filtering to cluster defaults and missing defense-in-depth protection against kernel-level attacks."
+      },
+      {
+        "type": "rbac",
+        "severity": "MEDIUM",
+        "resource_kind": "Role",
+        "resource_name": "api-server-role",
+        "namespace": "secure-app",
+        "description": "Role grants unrestricted 'get' access to secrets with only resourceNames restriction on 'db-password', but lacks granular audit logging and does not enforce least privilege for secret retrieval at the verb level."
+      }
+    ],
+    "summary": "The manifests demonstrate strong baseline security hygiene with non-root execution, read-only filesystems, resource limits, and capability dropping, but contain three notable issues: overly permissive egress in NetworkPolicy allowing cross-namespace traffic, missing seccomp profiles, and imagePullPolicy set to Always in production.",
+    "remediations": [
+      {
+        "resource": "api-server-policy",
+        "fix_type": "network_policy",
+        "concrete_yaml": "apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: api-server-policy\n  namespace: secure-app\nspec:\n  podSelector:\n    matchLabels:\n      app: api-server\n  policyTypes:\n  - Ingress\n  - Egress\n  ingress:\n  - from:\n    - namespaceSelector:\n        matchLabels:\n          name: secure-app\n    ports:\n    - protocol: TCP\n      port: 8080\n  egress:\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          name: secure-app\n      podSelector:\n        matchLabels:\n          app: postgres\n    ports:\n    - protocol: TCP\n      port: 5432\n  - to:\n    - namespaceSelector: {}\n    ports:\n    - protocol: UDP\n      port: 53\n  - to:\n    - podSelector: {}\n    ports:\n    - protocol: TCP\n      port: 443",
+        "severity": "HIGH"
+      },
+      {
+        "resource": "api-server",
+        "fix_type": "security_context",
+        "concrete_yaml": "spec:\n  template:\n    spec:\n      securityContext:\n        runAsNonRoot: true\n        runAsUser: 1000\n        fsGroup: 2000\n      containers:\n      - name: api-server\n        imagePullPolicy: IfNotPresent\n        image: myregistry.azurecr.io/api-server@sha256:abc123def456\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          runAsNonRoot: true\n          runAsUser: 1000\n          capabilities:\n            drop:\n            - ALL\n          seccomp:\n            type: RuntimeDefault",
+        "severity": "HIGH"
+      },
+      {
+        "resource": "api-server-role",
+        "fix_type": "rbac",
+        "concrete_yaml": "apiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: api-server-role\n  namespace: secure-app\nrules:\n- apiGroups: [\"\"]\n  resources: [\"secrets\"]\n  resourceNames: [\"db-password\"]\n  verbs: [\"get\"]\n- apiGroups: [\"\"]\n  resources: [\"configmaps\"]\n  resourceNames: [\"api-config\"]\n  verbs: [\"get\", \"list\"]",
+        "severity": "MEDIUM"
+      }
+    ],
+    "verdict": "ESCALATE",
+    "audit_trail": {
+      "workflow": "kubernetes",
+      "correlation_id": "1793003314584",
+      "timestamp_start": "2026-10-26T08:28:34.588Z",
+      "steps": [
+        {
+          "step": "agent1_kubernetes_analyzer",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T08:28:42.005Z",
+          "correlation_id": "1793003314584",
+          "model": "claude-haiku-4-5-20251001",
+          "input_tokens": 1601,
+          "output_tokens": 514,
+          "total_tokens": 2115,
+          "cost_usd": 0.0033368,
+          "findings": {
+            "security_issues": [
+              {
+                "type": "network_policy",
+                "severity": "HIGH",
+                "resource_kind": "NetworkPolicy",
+                "resource_name": "api-server-policy",
+                "namespace": "secure-app",
+                "description": "NetworkPolicy egress rule allows all traffic to any namespace via empty namespaceSelector, creating an overly permissive egress path beyond the intended database and DNS destinations."
+              },
+              {
+                "type": "pod_security",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "api-server",
+                "namespace": "secure-app",
+                "description": "Deployment uses imagePullPolicy: Always which forces image re-pull on every pod restart, increasing attack surface and deployment latency; consider using IfNotPresent or pinning to a digest."
+              },
+              {
+                "type": "security_context",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "api-server",
+                "namespace": "secure-app",
+                "description": "Container lacks seccomp profile configuration, leaving syscall filtering to cluster defaults and missing defense-in-depth protection against kernel-level attacks."
+              },
+              {
+                "type": "rbac",
+                "severity": "MEDIUM",
+                "resource_kind": "Role",
+                "resource_name": "api-server-role",
+                "namespace": "secure-app",
+                "description": "Role grants unrestricted 'get' access to secrets with only resourceNames restriction on 'db-password', but lacks granular audit logging and does not enforce least privilege for secret retrieval at the verb level."
+              }
+            ],
+            "summary": "The manifests demonstrate strong baseline security hygiene with non-root execution, read-only filesystems, resource limits, and capability dropping, but contain three notable issues: overly permissive egress in NetworkPolicy allowing cross-namespace traffic, missing seccomp profiles, and imagePullPolicy set to Always in production.",
+            "risk_level": "HIGH"
+          }
+        },
+        {
+          "step": "agent2_kubernetes_generator",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T08:28:50.176Z",
+          "correlation_id": "1793003314584",
+          "model": "claude-haiku-4-5-20251001",
+          "input_tokens": 1146,
+          "output_tokens": 738,
+          "total_tokens": 1884,
+          "cost_usd": 0.0038688,
+          "fixes": {
+            "fixes": [
+              {
+                "resource": "api-server-policy",
+                "fix_type": "network_policy",
+                "concrete_yaml": "apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: api-server-policy\n  namespace: secure-app\nspec:\n  podSelector:\n    matchLabels:\n      app: api-server\n  policyTypes:\n  - Ingress\n  - Egress\n  ingress:\n  - from:\n    - namespaceSelector:\n        matchLabels:\n          name: secure-app\n    ports:\n    - protocol: TCP\n      port: 8080\n  egress:\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          name: secure-app\n      podSelector:\n        matchLabels:\n          app: postgres\n    ports:\n    - protocol: TCP\n      port: 5432\n  - to:\n    - namespaceSelector: {}\n    ports:\n    - protocol: UDP\n      port: 53\n  - to:\n    - podSelector: {}\n    ports:\n    - protocol: TCP\n      port: 443",
+                "severity": "HIGH"
+              },
+              {
+                "resource": "api-server",
+                "fix_type": "security_context",
+                "concrete_yaml": "spec:\n  template:\n    spec:\n      securityContext:\n        runAsNonRoot: true\n        runAsUser: 1000\n        fsGroup: 2000\n      containers:\n      - name: api-server\n        imagePullPolicy: IfNotPresent\n        image: myregistry.azurecr.io/api-server@sha256:abc123def456\n        securityContext:\n          allowPrivilegeEscalation: false\n          readOnlyRootFilesystem: true\n          runAsNonRoot: true\n          runAsUser: 1000\n          capabilities:\n            drop:\n            - ALL\n          seccomp:\n            type: RuntimeDefault",
+                "severity": "HIGH"
+              },
+              {
+                "resource": "api-server-role",
+                "fix_type": "rbac",
+                "concrete_yaml": "apiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: api-server-role\n  namespace: secure-app\nrules:\n- apiGroups: [\"\"]\n  resources: [\"secrets\"]\n  resourceNames: [\"db-password\"]\n  verbs: [\"get\"]\n- apiGroups: [\"\"]\n  resources: [\"configmaps\"]\n  resourceNames: [\"api-config\"]\n  verbs: [\"get\", \"list\"]",
+                "severity": "MEDIUM"
+              }
+            ]
+          }
+        },
+        {
+          "step": "agent3_kubernetes_reviewer_attempt_1",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T08:28:54.381Z",
+          "correlation_id": "1793003314584",
+          "model": "claude-haiku-4-5-20251001",
+          "input_tokens": 1825,
+          "output_tokens": 133,
+          "total_tokens": 1958,
+          "cost_usd": 0.001992,
+          "verdict": "ESCALATE",
+          "review": {
+            "verdict": "ESCALATE",
+            "reasoning": "NetworkPolicy fix introduces silent operational risk by allowing unrestricted egress to port 443 (to any pod) and UDP 53 (to any namespace) without destination specificity, potentially enabling unintended cross-namespace traffic and DNS exfiltration; RBAC fix silently grants new 'list' permission on configmaps not mentioned in original findings; seccomp addition is valid but all three fixes modify production workloads requiring explicit traffic flow validation and operator sign-off before deployment."
+          }
+        }
+      ],
+      "status": "ESCALATE",
+      "total_tokens": 5957,
+      "total_cost": 0.0091976,
+      "final_risk_level": "HIGH",
+      "timestamp_end": "2026-10-26T08:28:54.381Z"
+    }
+  },
+  "escalation_info": {
+    "shouldEscalate": true,
+    "reasons": [
+      "kubernetes: HIGH risk in production environment",
+      "kubernetes: Reviewer verdict is ESCALATE"
+    ],
+    "recommendation": "HUMAN_REVIEW_REQUIRED"
+  },
+  "substance_level": "core",
+  "final_status": "ESCALATED",
+  "report": "# Infrastructure & Security Review Report\n\n**Combined Risk Level**: HIGH\n\n## Container Security (Kubernetes) Findings\n\n**Risk Level**: HIGH\n\nThe manifests demonstrate strong baseline security hygiene with non-root execution, read-only filesystems, resource limits, and capability dropping, but contain three notable issues: overly permissive egress in NetworkPolicy allowing cross-namespace traffic, missing seccomp profiles, and imagePullPolicy set to Always in production.\n\n### Security Issues\n- **api-server-policy** (NetworkPolicy, HIGH)\n  - Issue: NetworkPolicy egress rule allows all traffic to any namespace via empty namespaceSelector, creating an overly permissive egress path beyond the intended database and DNS destinations.\n- **api-server** (Deployment, MEDIUM)\n  - Issue: Deployment uses imagePullPolicy: Always which forces image re-pull on every pod restart, increasing attack surface and deployment latency; consider using IfNotPresent or pinning to a digest.\n- **api-server** (Deployment, MEDIUM)\n  - Issue: Container lacks seccomp profile configuration, leaving syscall filtering to cluster defaults and missing defense-in-depth protection against kernel-level attacks.\n- **api-server-role** (Role, MEDIUM)\n  - Issue: Role grants unrestricted 'get' access to secrets with only resourceNames restriction on 'db-password', but lacks granular audit logging and does not enforce least privilege for secret retrieval at the verb level.\n\n## Synthesis & Recommendations\n\n# Infrastructure Security Review Report\n\n## Executive Summary\n\nA Kubernetes manifest review for the `secure-app` namespace identified **one HIGH-severity network policy misconfiguration and three MEDIUM-severity issues** affecting container security controls. The deployment demonstrates strong baseline security hygiene (non-root execution, read-only filesystems, capability dropping), but contains critical egress permissiveness and missing defense-in-depth protections. **Combined Risk Level: HIGH**. Immediate action required: restrict NetworkPolicy egress rules, add seccomp profiles, and pin container image digests. The proposed remediations require operator validation before deployment due to undocumented traffic flow assumptions.\n\n---\n\n## Container Security (Kubernetes) Findings\n\n**Risk Level: HIGH**\n\nThe manifests demonstrate strong baseline security hygiene with non-root execution, read-only filesystems, resource limits, and capability dropping, but contain three notable issues: overly permissive egress in NetworkPolicy allowing cross-namespace traffic, missing seccomp profiles, and imagePullPolicy set to Always in production.\n\n### Network Policies\n\n❌ **HIGH**: Overly permissive NetworkPolicy egress rule\n   - **Resource**: `api-server-policy` (namespace: `secure-app`, kind: NetworkPolicy)\n   - **Issue**: Egress rule allows all traffic to any namespace via empty `namespaceSelector`, creating an overly permissive egress path beyond the intended database and DNS destinations\n   - **Impact**: Enables lateral movement and potential data exfiltration across namespace boundaries; violates principle of least privilege for egress filtering\n   - **Recommendation**: Restrict egress to explicit destinations: database pods (PostgreSQL on port 5432 in `secure-app` namespace), DNS servers (UDP port 53 to any namespace), and HTTPS services (TCP port 443 to specific pods only). The proposed remediation allows unrestricted egress to port 443 on any pod within the cluster—this requires validation that legitimate HTTPS destinations are scoped correctly and that no unintended internal services are exposed.\n\n### Security Contexts\n\n⚠️ **MEDIUM**: Missing seccomp profile configuration\n   - **Resource**: `api-server` (namespace: `secure-app`, kind: Deployment)\n   - **Issue**: Container lacks `seccomp` profile configuration, leaving syscall filtering to cluster defaults and missing defense-in-depth protection against kernel-level attacks\n   - **Impact**: Increases attack surface by allowing unrestricted syscalls; no mitigation against container escape exploits at the kernel level\n   - **Recommendation**: Add `securityContext.seccomp.type: RuntimeDefault` to the deployment spec. The remediation YAML includes this; ensure your cluster has RuntimeDefault profiles enabled or explicitly define a custom seccomp profile that restricts dangerous syscalls (`execve`, `ptrace`, `clone` with CLONE_NEWUSER, etc.).\n\n### Pod Security\n\n⚠️ **MEDIUM**: Insecure image pull policy\n   - **Resource**: `api-server` (namespace: `secure-app`, kind: Deployment)\n   - **Issue**: Deployment uses `imagePullPolicy: Always`, forcing image re-pull on every pod restart, increasing attack surface and deployment latency\n   - **Impact**: Each pod restart re-fetches the image from the registry, multiplying exposure to registry-level compromise, network interception, or image tampering; increases pod startup time and API latency\n   - **Recommendation**: Change `imagePullPolicy` to `IfNotPresent` and pin the container image to a specific digest (e.g., `myregistry.azurecr.io/api-server@sha256:abc123def456`). The remediation YAML includes both changes; ensure the digest matches your image scanning and signing pipeline.\n\n### RBAC Issues\n\n⚠️ **MEDIUM**: Overly broad secret access with insufficient granularity\n   - **Resource**: `api-server-role` (namespace: `secure-app`, kind: Role)\n   - **Issue**: Role grants `get` access to the `db-password` secret with only `resourceNames` restriction, but lacks granular audit logging configuration and does not enforce least privilege at the verb level; proposed fix silently introduces `list` permission on `configmaps` not mentioned in original findings\n   - **Impact**: Allows the service account to retrieve sensitive database credentials; the `list` permission grants enumeration rights beyond the original scope\n   - **Recommendation**: Keep the role scoped to `get` on the specific `db-password` secret only. If configmap access is required, explicitly document the business justification and add it as a separate rule with only necessary verbs (`get` or `list`, not both unless required). The remediation YAML adds configmap permissions—verify these are intentional with the service owner before applying. Enable audit logging on secret access by configuring `audit.k8s.io/level: RequestResponse` in the audit policy for the `secrets` resource.\n\n---\n\n## Unified Recommendations\n\n### Priority 1: HIGH – Must Fix Before Deployment\n\n1. **Restrict NetworkPolicy egress rules** (`api-server-policy`)\n   - Replace empty `namespaceSelector` rules with explicit destination selectors\n   - Define separate rules for:\n     - **Database traffic**: Egress to pods labeled `app: postgres` in the `secure-app` namespace on TCP 5432\n     - **DNS traffic**: Egress to any pod on UDP 53 (CoreDNS)\n     - **HTTPS traffic**: Egress to specific external services or internal APIs; narrow the scope from \"all pods\" to documented HTTPS dependencies\n   - **Action**: Review the deployment documentation to identify all external/internal HTTPS endpoints the API server connects to, then update the NetworkPolicy accordingly. Coordinate with the platform team to ensure no legitimate traffic is blocked.\n   - **Timeline**: Must complete before production deployment\n\n2. **Add seccomp profile to api-server Deployment**\n   - Add `securityContext.seccomp.type: RuntimeDefault` at the container level\n   - Verify the cluster supports RuntimeDefault profiles; if not, provision a custom profile that restricts high-risk syscalls\n   - **Action**: Apply the remediation YAML seccomp block to the Deployment spec and validate in a staging environment\n   - **Timeline**: Apply immediately; staging validation required\n\n### Priority 2: HIGH – Should Fix Before Deployment\n\n3. **Pin container image and switch pull policy** (`api-server` Deployment)\n   - Replace `imagePullPolicy: Always` with `IfNotPresent`\n   - Update the image reference from `image: api-server` (or equivalent) to `image: myregistry.azurecr.io/api-server@sha256:<digest>`\n   - Obtain the digest from your image scan/signing pipeline or run `docker inspect --format='{{index .RepoDigests 0}}' <image>`\n   - **Action**: Update the Deployment manifest and re-deploy; monitor pod restart times to confirm improvement\n   - **Timeline**: Apply with next deployment cycle\n\n### Priority 3: MEDIUM – Refine Before Deployment\n\n4. **Refine RBAC for api-server-role** (`api-server-role` Role)\n   - Remove the auto-added `configmaps` rule from the remediation YAML unless explicitly required\n   - Verify the service account only needs `get` on the `db-password` secret\n   - **Action**: Audit service account usage in logs; confirm no enumeration (`list`) of secrets is needed\n   - **Enable audit logging**: Configure Kubernetes audit policy to capture all secret access (request/response level) for compliance and incident response\n   - **Timeline**: Apply with NetworkPolicy fixes\n\n---\n\n## Verdict Summary\n\n**ESCALATE** – Human review and operator sign-off required\n\n### Reasoning\n\nThe proposed remediations address the identified security gaps but introduce **undocumented traffic flow assumptions** that require validation:\n\n- **NetworkPolicy fix**: The suggested egress rule allows unrestricted access to port 443 (TCP) on any pod in the cluster. This requires documentation of which HTTPS endpoints the API server legitimately connects to (external APIs, internal services, etc.) to ensure the fix does not inadvertently permit lateral movement or exfiltration.\n\n- **RBAC fix**: The remediation silently grants new `list` permissions on configmaps (`api-config`) that were not mentioned in the original findings. This requires explicit business justification and confirmation from the service owner.\n\n- **Production workload**: All three fixes modify a production deployment. Implementation requires:\n  1. Peer review by the platform security team\n  2. Validation in a staging environment with representative traffic patterns\n  3. Operator sign-off on egress rule scope\n  4. Coordination with on-call team for rollback procedures\n\n### Recommended Next Steps\n\n1. **Schedule a review session** with the application owner and platform team to discuss:\n   - Exact HTTPS endpoints and IP ranges the API server connects to\n   - Whether configmap read access is a legitimate service requirement\n   - Rollback and testing strategy for staging validation\n\n2. **Stage the fixes** in a non-production environment using the provided remediation YAML; validate that the application functions correctly with the tighter security controls\n\n3. **Enable audit logging** for secrets and network policies to establish a baseline for compliance monitoring\n\n4. **Update deployment documentation** to codify the approved ingress/egress rules and RBAC permissions for future reviews\n\n---\n\n*Report generated by Stage 5 Multi-Workflow Coordinator System*\n",
+  "timestamp": "2026-10-26T08:29:20.811Z"
+}

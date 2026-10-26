@@ -1,0 +1,160 @@
+{
+  "run_id": "1793003053542",
+  "workflow_type": "kubernetes",
+  "workflow_executed": "kubernetes",
+  "environment": "production",
+  "workflow_findings": {
+    "workflow": "kubernetes",
+    "risk_level": "HIGH",
+    "security_issues": [
+      {
+        "type": "network_policy",
+        "severity": "HIGH",
+        "resource_kind": "NetworkPolicy",
+        "resource_name": "api-server-policy",
+        "namespace": "secure-app",
+        "description": "NetworkPolicy egress rule permits traffic to all namespaces via empty namespaceSelector, allowing potential lateral movement and data exfiltration."
+      },
+      {
+        "type": "pod_security",
+        "severity": "MEDIUM",
+        "resource_kind": "Deployment",
+        "resource_name": "api-server",
+        "namespace": "secure-app",
+        "description": "Container image uses 'Always' imagePullPolicy with a mutable tag 'v1.2.3' instead of immutable digest, risking unexpected image changes."
+      },
+      {
+        "type": "rbac",
+        "severity": "MEDIUM",
+        "resource_kind": "Role",
+        "resource_name": "api-server-role",
+        "namespace": "secure-app",
+        "description": "Role grants access to secrets including 'db-password' to api-server ServiceAccount, increasing blast radius if pod is compromised."
+      }
+    ],
+    "summary": "The manifests demonstrate strong foundational security practices with pod security contexts, resource limits, and RBAC restrictions, but contain three issues: overly permissive egress NetworkPolicy, mutable image tag, and unnecessary secret access via RBAC.",
+    "remediations": [
+      {
+        "resource": "api-server-policy",
+        "fix_type": "network_policy",
+        "concrete_yaml": "apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: api-server-policy\n  namespace: secure-app\nspec:\n  podSelector:\n    matchLabels:\n      app: api-server\n  policyTypes:\n  - Ingress\n  - Egress\n  ingress:\n  - from:\n    - podSelector:\n        matchLabels:\n          app: frontend\n    ports:\n    - protocol: TCP\n      port: 8080\n  egress:\n  - to:\n    - podSelector:\n        matchLabels:\n          app: database\n    ports:\n    - protocol: TCP\n      port: 5432\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          name: kube-system\n    ports:\n    - protocol: TCP\n      port: 53\n  - to:\n    - podSelector: {}\n    ports:\n    - protocol: TCP\n      port: 443",
+        "severity": "HIGH"
+      },
+      {
+        "resource": "api-server-role",
+        "fix_type": "rbac",
+        "concrete_yaml": "apiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: api-server-role\n  namespace: secure-app\nrules:\n- apiGroups: [\"\"]\n  resources: [\"pods\"]\n  verbs: [\"get\", \"list\"]\n- apiGroups: [\"\"]\n  resources: [\"configmaps\"]\n  verbs: [\"get\"]\n  resourceNames: [\"api-config\"]\n- apiGroups: [\"\"]\n  resources: [\"secrets\"]\n  verbs: [\"get\"]\n  resourceNames: [\"api-tls-cert\"]",
+        "severity": "MEDIUM"
+      }
+    ],
+    "verdict": "ESCALATE",
+    "audit_trail": {
+      "workflow": "kubernetes",
+      "correlation_id": "1793003053542",
+      "timestamp_start": "2026-10-26T08:24:13.547Z",
+      "steps": [
+        {
+          "step": "agent1_kubernetes_analyzer",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T08:24:18.620Z",
+          "correlation_id": "1793003053542",
+          "model": "claude-haiku-4-5-20251001",
+          "input_tokens": 1601,
+          "output_tokens": 378,
+          "total_tokens": 1979,
+          "cost_usd": 0.0027928,
+          "findings": {
+            "security_issues": [
+              {
+                "type": "network_policy",
+                "severity": "HIGH",
+                "resource_kind": "NetworkPolicy",
+                "resource_name": "api-server-policy",
+                "namespace": "secure-app",
+                "description": "NetworkPolicy egress rule permits traffic to all namespaces via empty namespaceSelector, allowing potential lateral movement and data exfiltration."
+              },
+              {
+                "type": "pod_security",
+                "severity": "MEDIUM",
+                "resource_kind": "Deployment",
+                "resource_name": "api-server",
+                "namespace": "secure-app",
+                "description": "Container image uses 'Always' imagePullPolicy with a mutable tag 'v1.2.3' instead of immutable digest, risking unexpected image changes."
+              },
+              {
+                "type": "rbac",
+                "severity": "MEDIUM",
+                "resource_kind": "Role",
+                "resource_name": "api-server-role",
+                "namespace": "secure-app",
+                "description": "Role grants access to secrets including 'db-password' to api-server ServiceAccount, increasing blast radius if pod is compromised."
+              }
+            ],
+            "summary": "The manifests demonstrate strong foundational security practices with pod security contexts, resource limits, and RBAC restrictions, but contain three issues: overly permissive egress NetworkPolicy, mutable image tag, and unnecessary secret access via RBAC.",
+            "risk_level": "HIGH"
+          }
+        },
+        {
+          "step": "agent2_kubernetes_generator",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T08:24:27.971Z",
+          "correlation_id": "1793003053542",
+          "model": "claude-haiku-4-5-20251001",
+          "input_tokens": 1010,
+          "output_tokens": 538,
+          "total_tokens": 1548,
+          "cost_usd": 0.00296,
+          "fixes": {
+            "fixes": [
+              {
+                "resource": "api-server-policy",
+                "fix_type": "network_policy",
+                "concrete_yaml": "apiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: api-server-policy\n  namespace: secure-app\nspec:\n  podSelector:\n    matchLabels:\n      app: api-server\n  policyTypes:\n  - Ingress\n  - Egress\n  ingress:\n  - from:\n    - podSelector:\n        matchLabels:\n          app: frontend\n    ports:\n    - protocol: TCP\n      port: 8080\n  egress:\n  - to:\n    - podSelector:\n        matchLabels:\n          app: database\n    ports:\n    - protocol: TCP\n      port: 5432\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          name: kube-system\n    ports:\n    - protocol: TCP\n      port: 53\n  - to:\n    - podSelector: {}\n    ports:\n    - protocol: TCP\n      port: 443",
+                "severity": "HIGH"
+              },
+              {
+                "resource": "api-server-role",
+                "fix_type": "rbac",
+                "concrete_yaml": "apiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: api-server-role\n  namespace: secure-app\nrules:\n- apiGroups: [\"\"]\n  resources: [\"pods\"]\n  verbs: [\"get\", \"list\"]\n- apiGroups: [\"\"]\n  resources: [\"configmaps\"]\n  verbs: [\"get\"]\n  resourceNames: [\"api-config\"]\n- apiGroups: [\"\"]\n  resources: [\"secrets\"]\n  verbs: [\"get\"]\n  resourceNames: [\"api-tls-cert\"]",
+                "severity": "MEDIUM"
+              }
+            ]
+          }
+        },
+        {
+          "step": "agent3_kubernetes_reviewer_attempt_1",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T08:24:33.968Z",
+          "correlation_id": "1793003053542",
+          "model": "claude-haiku-4-5-20251001",
+          "input_tokens": 1489,
+          "output_tokens": 166,
+          "total_tokens": 1655,
+          "cost_usd": 0.0018552,
+          "verdict": "ESCALATE",
+          "review": {
+            "verdict": "ESCALATE",
+            "reasoning": "NetworkPolicy fix introduces a critical functional gap: the final egress rule `to: [podSelector: {}]` on port 443 permits unrestricted egress to all pods in the namespace (defeating the stated HIGH severity fix), the kube-system DNS rule permits all protocols/ports to kube-system (not just port 53 UDP), and the fix lacks egress for necessary Kubernetes API communication (kubelet, webhook servers, service account token validation); RBAC fix removes 'db-password' secret access but provides no evidence that api-server workload doesn't actually require database credentials, creating operational risk in production without documented functional validation."
+          }
+        }
+      ],
+      "status": "ESCALATE",
+      "total_tokens": 5182,
+      "total_cost": 0.007608,
+      "final_risk_level": "HIGH",
+      "timestamp_end": "2026-10-26T08:24:33.968Z"
+    }
+  },
+  "escalation_info": {
+    "shouldEscalate": true,
+    "reasons": [
+      "kubernetes: HIGH risk in production environment",
+      "kubernetes: Reviewer verdict is ESCALATE"
+    ],
+    "recommendation": "HUMAN_REVIEW_REQUIRED"
+  },
+  "substance_level": "core",
+  "final_status": "ESCALATED",
+  "report": "# Infrastructure & Security Review Report\n\n**Combined Risk Level**: HIGH\n\n## Container Security (Kubernetes) Findings\n\n**Risk Level**: HIGH\n\nThe manifests demonstrate strong foundational security practices with pod security contexts, resource limits, and RBAC restrictions, but contain three issues: overly permissive egress NetworkPolicy, mutable image tag, and unnecessary secret access via RBAC.\n\n### Security Issues\n- **api-server-policy** (NetworkPolicy, HIGH)\n  - Issue: NetworkPolicy egress rule permits traffic to all namespaces via empty namespaceSelector, allowing potential lateral movement and data exfiltration.\n- **api-server** (Deployment, MEDIUM)\n  - Issue: Container image uses 'Always' imagePullPolicy with a mutable tag 'v1.2.3' instead of immutable digest, risking unexpected image changes.\n- **api-server-role** (Role, MEDIUM)\n  - Issue: Role grants access to secrets including 'db-password' to api-server ServiceAccount, increasing blast radius if pod is compromised.\n\n## Synthesis & Recommendations\n\n# Infrastructure Security Review Report\n\n## Executive Summary\n\nThis report covers a comprehensive security review of Kubernetes manifests deployed in the `secure-app` namespace. The review identified **three security issues across network policies, pod security, and RBAC configurations**, resulting in a combined **HIGH risk level**. While foundational security practices are in place (pod security contexts, resource limits, RBAC restrictions), the identified gaps create material risks for lateral movement, supply chain attacks, and excessive privilege escalation. Immediate action is required to remediate the network policy egress rule before production deployment.\n\n---\n\n## Container Security (Kubernetes) Findings\n\n**Risk Level: HIGH**\n\nThe manifests demonstrate strong foundational security practices with pod security contexts, resource limits, and RBAC restrictions, but contain three issues: overly permissive egress NetworkPolicy, mutable image tag, and unnecessary secret access via RBAC.\n\n### Network Policies\n\n❌ **HIGH**: Overly permissive egress NetworkPolicy allows lateral movement and data exfiltration.\n   - **Resource**: `api-server-policy` (NetworkPolicy in `secure-app` namespace)\n   - **Issue**: The egress rule includes an empty `namespaceSelector`, which permits traffic to all namespaces without restriction. This defeats network segmentation and enables lateral movement to other workloads or exfiltration to external services.\n   - **Impact**: A compromised `api-server` pod can communicate with any pod in any namespace, including external networks if allowed by cluster egress policies. This creates a pathway for data exfiltration and cross-namespace compromise.\n   - **Recommendation**: Replace the egress rules with explicit allow-lists restricted to:\n     - Database pods (labeled `app: database`) on port 5432 TCP only\n     - DNS service in `kube-system` namespace on port 53 UDP only\n     - Kubernetes API server communication on port 443 TCP (if required by workload)\n     - Remove blanket egress rules that permit communication to all pods or namespaces\n\n### RBAC Issues\n\n⚠️ **MEDIUM**: Role grants unnecessary access to database password secret, increasing blast radius.\n   - **Resource**: `api-server-role` (Role in `secure-app` namespace, bound to `api-server` ServiceAccount)\n   - **Issue**: The role grants `get` and `list` access to secrets resource, explicitly including the `db-password` secret. If the `api-server` pod is compromised, an attacker gains immediate access to database credentials without additional lateral movement.\n   - **Impact**: Reduces time-to-compromise for database; enables credential theft and unauthorized database access; violates least-privilege principle if `api-server` doesn't require direct secret access (credentials should be injected via init containers or volume mounts from restricted sources).\n   - **Recommendation**: Audit whether `api-server` workload actually requires access to `db-password` secret. If not required, remove secret permissions entirely. If required, limit to only the specific secret needed (e.g., `api-tls-cert`) using `resourceNames` field, removing `db-password` from the permission scope entirely.\n\n### Pod Security\n\n⚠️ **MEDIUM**: Mutable image tag creates risk of unexpected image changes and supply chain attacks.\n   - **Resource**: `api-server` (Deployment in `secure-app` namespace)\n   - **Issue**: The deployment uses `imagePullPolicy: Always` with a mutable semantic version tag `v1.2.3` instead of an immutable image digest (sha256:...). This means each pod restart pulls the latest image matching that tag, which could change without explicit version bumps if the tag is re-pushed.\n   - **Impact**: Unexpected image changes during pod restarts can introduce unvetted code, security vulnerabilities, or malicious payloads without audit trail or explicit deployment approval. Combined with `Always` pull policy, this creates a supply chain vulnerability.\n   - **Recommendation**: Replace the mutable tag with an immutable image digest: change `image: api-server:v1.2.3` to `image: api-server@sha256:<digest>`. Retain or adjust `imagePullPolicy` to `IfNotPresent` for non-development environments to improve performance. Implement a CI/CD gate that pins images to verified digests before deployment.\n\n---\n\n## Unified Recommendations\n\n### Priority 1: HIGH — Network Policy Egress Rules (Production Blocking)\n\n**Action**: Immediately replace `api-server-policy` egress rules before deploying to production.\n\n**Implementation**:\n```yaml\napiVersion: networking.k8s.io/v1\nkind: NetworkPolicy\nmetadata:\n  name: api-server-policy\n  namespace: secure-app\nspec:\n  podSelector:\n    matchLabels:\n      app: api-server\n  policyTypes:\n  - Ingress\n  - Egress\n  ingress:\n  - from:\n    - podSelector:\n        matchLabels:\n          app: frontend\n    ports:\n    - protocol: TCP\n      port: 8080\n  egress:\n  # Database access only\n  - to:\n    - podSelector:\n        matchLabels:\n          app: database\n    ports:\n    - protocol: TCP\n      port: 5432\n  # DNS only (UDP port 53)\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          name: kube-system\n    ports:\n    - protocol: UDP\n      port: 53\n  # Kubernetes API (if workload requires it)\n  - to:\n    - namespaceSelector:\n        matchLabels:\n          name: default\n    ports:\n    - protocol: TCP\n      port: 443\n```\n\n**Validation**: Test that `api-server` pods can communicate with database and DNS only; verify external traffic is blocked via network policies and cluster egress controls.\n\n---\n\n### Priority 2: MEDIUM — RBAC Secret Access Restriction\n\n**Action**: Remove or minimize secret access in `api-server-role`.\n\n**Steps**:\n1. Verify whether `api-server` workload functionally requires `db-password` secret access. Check application logs and configuration.\n2. If credentials are needed, implement alternative injection method:\n   - Use init container to fetch and mount credentials as a file\n   - Use external secret management (e.g., HashiCorp Vault, AWS Secrets Manager)\n   - Inject via environment variables from restricted ConfigMap only\n3. Update the role to remove `db-password` from secret permissions:\n\n```yaml\napiVersion: rbac.authorization.k8s.io/v1\nkind: Role\nmetadata:\n  name: api-server-role\n  namespace: secure-app\nrules:\n- apiGroups: [\"\"]\n  resources: [\"pods\"]\n  verbs: [\"get\", \"list\"]\n- apiGroups: [\"\"]\n  resources: [\"configmaps\"]\n  verbs: [\"get\"]\n  resourceNames: [\"api-config\"]\n- apiGroups: [\"\"]\n  resources: [\"secrets\"]\n  verbs: [\"get\"]\n  resourceNames: [\"api-tls-cert\"]\n```\n\n**Validation**: Confirm workload startup and operation without `db-password` access; audit CloudTrail/audit logs for any failed secret access attempts post-deployment.\n\n---\n\n### Priority 3: MEDIUM — Image Digest Pinning\n\n**Action**: Replace mutable image tag with immutable digest in `api-server` Deployment.\n\n**Steps**:\n1. Retrieve current image digest: `kubectl get deployment api-server -n secure-app -o jsonpath='{.spec.template.spec.containers[0].image}'`\n2. Resolve the current `api-server:v1.2.3` tag to its full digest via your image registry or CI/CD system.\n3. Update Deployment to use digest:\n   ```yaml\n   image: api-server@sha256:abc123def456...\n   imagePullPolicy: IfNotPresent\n   ```\n4. Implement automated digest pinning in your CI/CD pipeline to prevent manual tag pushes.\n\n**Validation**: Verify that pod restarts do not trigger unexpected image updates; confirm deployment rollout succeeds with pinned digest.\n\n---\n\n## Verdict Summary\n\n**ESCALATE**\n\nThe Kubernetes Security Review workflow has identified material security gaps that require human review and decision before production deployment.\n\n### Reasoning\n\nThe generated remediations address the **identified issues** but contain **functional and operational gaps** that prevent automatic approval:\n\n1. **NetworkPolicy Fix Gap**: The proposed remediation includes an unrestricted egress rule (`to: [podSelector: {}]` on port 443) that contradicts the stated HIGH severity finding. This rule re-introduces the lateral movement risk that the policy was designed to prevent. Additionally, the kube-system DNS rule permits all protocols to port 53 instead of UDP-only, creating unnecessary exposure.\n\n2. **RBAC Fix Without Validation**: The proposed remediation removes `db-password` secret access but provides no evidence that the `api-server` workload actually operates without database credentials. Removing required permissions will cause application runtime failures in production without documented functional validation.\n\n3. **No Kubernetes API Communication Rule**: Modern Kubernetes workloads often require access to the Kubernetes API (kubelet endpoint, webhook servers, service account token validation). The fix lacks an explicit egress rule for this communication, risking pod startup or operational failures.\n\n### Required Human Actions\n\n1. **Review NetworkPolicy Requirements**: Confirm with platform and application teams whether `api-server` requires any additional egress routes (e.g., external APIs, logging services, observability backends) and codify as explicit allow-list rules.\n\n2. **Validate RBAC Changes**: Test the RBAC remediation in a staging environment; confirm `api-server` application starts, authenticates to the database, and operates normally without `db-password` secret access. If secret access is required, evaluate alternative credential injection methods.\n\n3. **Approve Remediation**: Once functional validation is complete and network requirements are documented, apply the corrected NetworkPolicy and RBAC configurations to production.\n\n**Next Step**: Escalate to the platform security team with this report and the specific functional questions above. Do not deploy to production until NetworkPolicy and RBAC gaps are addressed.\n\n---\n\n*Report generated by Stage 5 Multi-Workflow Coordinator System*\n",
+  "timestamp": "2026-10-26T08:25:05.167Z"
+}

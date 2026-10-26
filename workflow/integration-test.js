@@ -13,7 +13,7 @@ const TEST_SCENARIOS = [
   // Terraform Tests
   {
     id: 'tf-benign',
-    name: 'Terraform: Benign configuration (no issues)',
+    name: 'Terraform: Properly configured infrastructure',
     input: 'test-data/terraform-benign.tf',
     environment: 'production',
     expectedWorkflow: 'terraform',
@@ -37,7 +37,8 @@ const TEST_SCENARIOS = [
     input: 'test-data/k8s-benign.yaml',
     environment: 'production',
     expectedWorkflow: 'kubernetes',
-    expectedRisk: 'HIGH', // Benign but with some non-critical gaps
+    expectedStatus: 'ESCALATED',
+    expectedRisk: 'HIGH',
   },
   {
     id: 'k8s-rbac-issue',

@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-10-26T06:19:50.875Z",
+  "timestamp": "2026-10-26T08:31:18.922Z",
   "total": 5,
   "passed": 5,
   "failed": 0,
@@ -7,7 +7,7 @@
     {
       "scenario": {
         "id": "tf-benign",
-        "name": "Terraform: Benign configuration (no issues)",
+        "name": "Terraform: Properly configured infrastructure",
         "input": "test-data/terraform-benign.tf",
         "environment": "production",
         "expectedWorkflow": "terraform",
@@ -37,6 +37,7 @@
         "input": "test-data/k8s-benign.yaml",
         "environment": "production",
         "expectedWorkflow": "kubernetes",
+        "expectedStatus": "ESCALATED",
         "expectedRisk": "HIGH"
       },
       "passed": true,
