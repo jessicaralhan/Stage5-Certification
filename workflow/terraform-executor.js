@@ -98,6 +98,9 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
 
     // If no issues, return early
     if (agent1Findings.risk_level === 'LOW' && (!agent1Findings.destructive_changes || agent1Findings.destructive_changes.length === 0)) {
+      audit.final_risk_level = agent1Findings.risk_level;
+      audit.status = 'APPROVED';
+      audit.timestamp_end = new Date().toISOString();
       return {
         workflow: 'terraform',
         risk_level: 'LOW',

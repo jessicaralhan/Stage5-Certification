@@ -5,7 +5,7 @@
 // The client accepts an optional `system` prompt, but workflow.js currently
 // sends each agent's full rendered prompt as the single user message.
 
-const DEFAULT_MODEL = 'claude-haiku-5-5';
+const DEFAULT_MODEL = 'claude-haiku-4-5-20251001';
 // Some environments route Anthropic calls through an internal gateway instead
 // of calling api.anthropic.com directly. Set ANTHROPIC_BASE_URL (no trailing
 // slash, no /v1/messages suffix) to point at that gateway's Anthropic-shaped

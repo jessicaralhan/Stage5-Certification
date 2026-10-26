@@ -97,6 +97,9 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
 
     // If no issues, return early
     if (agent1Findings.risk_level === 'LOW' && (!agent1Findings.security_issues || agent1Findings.security_issues.length === 0)) {
+      audit.final_risk_level = agent1Findings.risk_level;
+      audit.status = 'APPROVED';
+      audit.timestamp_end = new Date().toISOString();
       return {
         workflow: 'kubernetes',
         risk_level: 'LOW',
