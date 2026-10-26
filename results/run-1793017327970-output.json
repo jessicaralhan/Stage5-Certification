@@ -1,0 +1,112 @@
+{
+  "run_id": "1793017327970",
+  "workflow_type": "terraform",
+  "workflow_executed": "terraform",
+  "environment": "production",
+  "workflow_findings": {
+    "workflow": "terraform",
+    "risk_level": "CRITICAL",
+    "destructive_changes": [
+      {
+        "resource": "aws_rds_cluster.prod",
+        "action": "destroy_and_recreate",
+        "forcing_attribute": "db_subnet_group_name",
+        "environment": "production",
+        "severity": "CRITICAL"
+      }
+    ],
+    "security_exposure": [
+      {
+        "resource": "aws_rds_cluster.prod",
+        "issue": "RDS cluster has storage_encrypted set to true but no kms_key_id is specified, so encryption uses AWS-managed keys instead of customer-managed KMS key.",
+        "severity": "MEDIUM"
+      },
+      {
+        "resource": "aws_rds_cluster.prod",
+        "issue": "iam_database_authentication_enabled is false, allowing password-only authentication instead of requiring IAM database authentication.",
+        "severity": "MEDIUM"
+      }
+    ],
+    "cost_notes": [
+      "New aws_kms_key.rds will incur ongoing costs for AWS KMS key management and usage.",
+      "RDS cluster replacement may incur data migration and downtime costs during the forced recreation."
+    ],
+    "remediations": [],
+    "verdict": "ESCALATE",
+    "audit_trail": {
+      "workflow": "terraform",
+      "correlation_id": "1793017327970",
+      "timestamp_start": "2026-10-26T12:22:11.318Z",
+      "steps": [
+        {
+          "step": "agent1_terraform_analyzer",
+          "status": "COMPLETE",
+          "timestamp": "2026-10-26T12:22:14.767Z",
+          "correlation_id": "1793017327970",
+          "model": "claude-haiku-4-5-20251001",
+          "input_tokens": 1278,
+          "output_tokens": 304,
+          "total_tokens": 1582,
+          "cost_usd": 0.0022384,
+          "findings": {
+            "destructive_changes": [
+              {
+                "resource": "aws_rds_cluster.prod",
+                "action": "destroy_and_recreate",
+                "forcing_attribute": "db_subnet_group_name",
+                "environment": "production",
+                "severity": "CRITICAL"
+              }
+            ],
+            "security_exposure": [
+              {
+                "resource": "aws_rds_cluster.prod",
+                "issue": "RDS cluster has storage_encrypted set to true but no kms_key_id is specified, so encryption uses AWS-managed keys instead of customer-managed KMS key.",
+                "severity": "MEDIUM"
+              },
+              {
+                "resource": "aws_rds_cluster.prod",
+                "issue": "iam_database_authentication_enabled is false, allowing password-only authentication instead of requiring IAM database authentication.",
+                "severity": "MEDIUM"
+              }
+            ],
+            "cost_notes": [
+              "New aws_kms_key.rds will incur ongoing costs for AWS KMS key management and usage.",
+              "RDS cluster replacement may incur data migration and downtime costs during the forced recreation."
+            ],
+            "risk_level": "CRITICAL"
+          }
+        }
+      ],
+      "status": "FAILED",
+      "total_tokens": 3115,
+      "total_cost": 0.0037848000000000005,
+      "timestamp_end": "2026-10-26T12:22:21.607Z",
+      "error": "Remediation 0: proposed_fix contains placeholder text: Add lifecycle block to prevent unintended recreation: lifecycle { ignore_changes = [db_subnet_group_",
+      "coordinator_routing": {
+        "decision": "terraform",
+        "confidence": "high",
+        "reason": "File extension .tf and content contains Terraform-specific markers: resource blocks (aws_rds_cluster, aws_db_subnet_group, aws_kms_key), forced replacement notation (-/+), and Terraform plan output format. This is clearly a Terraform destructive change plan for production AWS infrastructure.",
+        "model": "claude-haiku-4-5-20251001",
+        "input_tokens": 1433,
+        "output_tokens": 100,
+        "total_tokens": 1533,
+        "cost_usd": 0.0015464
+      }
+    }
+  },
+  "escalation_info": {
+    "shouldEscalate": true,
+    "reasons": [
+      "terraform: Risk level is CRITICAL",
+      "terraform: HIGH risk in production environment",
+      "terraform: 1 destructive change(s) in production",
+      "terraform: Reviewer verdict is ESCALATE"
+    ],
+    "recommendation": "HUMAN_REVIEW_REQUIRED"
+  },
+  "substance_level": "core",
+  "final_status": "ESCALATED",
+  "report": "# Infrastructure & Security Review Report\n\n**Combined Risk Level**: CRITICAL\n\n## Infrastructure (Terraform) Findings\n\n**Risk Level**: CRITICAL\n\n### Destructive Changes\n- **aws_rds_cluster.prod** (CRITICAL): destroy_and_recreate\n  - Attribute causing replacement: db_subnet_group_name\n\n### Security Exposure\n- **aws_rds_cluster.prod** (MEDIUM): RDS cluster has storage_encrypted set to true but no kms_key_id is specified, so encryption uses AWS-managed keys instead of customer-managed KMS key.\n- **aws_rds_cluster.prod** (MEDIUM): iam_database_authentication_enabled is false, allowing password-only authentication instead of requiring IAM database authentication.\n\n### Cost Impact\n- New aws_kms_key.rds will incur ongoing costs for AWS KMS key management and usage.\n- RDS cluster replacement may incur data migration and downtime costs during the forced recreation.\n\n## Synthesis & Recommendations\n\n# Infrastructure Security Review Report\n\n## Executive Summary\n\nA critical infrastructure change affecting production RDS resources has been flagged for immediate escalation. The Terraform plan includes a forced destruction and recreation of `aws_rds_cluster.prod` due to a subnet group modification, which will cause production downtime and data migration overhead. Additionally, the cluster configuration lacks customer-managed encryption and IAM database authentication, creating medium-severity security gaps. This plan requires executive review and approval before proceeding; alternative migration strategies should be evaluated to minimize production impact.\n\n---\n\n## Infrastructure (Terraform) Findings\n\n**Risk Level**: **CRITICAL**\n\n### Destructive Changes\n\n❌ **CRITICAL**: Production RDS cluster forced replacement on subnet group change.\n   - **Resource**: `aws_rds_cluster.prod`\n   - **Action**: Destroy and recreate (indicated by `-/+` in plan)\n   - **Forcing Attribute**: `db_subnet_group_name`\n   - **Environment**: Production\n   - **Impact**: Full cluster destruction triggers data loss risk, extended downtime, and manual recovery procedures. Any in-flight transactions are terminated immediately.\n   - **Why This Matters**: Unplanned production database outages violate RTO/RPO requirements and expose the organization to data consistency issues and customer-facing service degradation.\n\n### Security Exposure\n\n⚠️ **MEDIUM**: RDS cluster uses AWS-managed encryption instead of customer-managed keys.\n   - **Resource**: `aws_rds_cluster.prod`\n   - **Issue**: `storage_encrypted` is set to `true`, but `kms_key_id` is not specified, defaulting to AWS-managed key material.\n   - **Impact**: Organization cannot rotate or revoke encryption keys independently; key custody remains with AWS. Compliance frameworks (HIPAA, PCI-DSS, FedRAMP) often require customer-managed key control.\n   - **Recommendation**: Specify a customer-managed KMS key via the `kms_key_id` parameter. A new `aws_kms_key.rds` resource is already planned; ensure key rotation is enabled and access is restricted to database service roles only.\n\n⚠️ **MEDIUM**: RDS cluster allows password-only authentication instead of enforcing IAM database authentication.\n   - **Resource**: `aws_rds_cluster.prod`\n   - **Issue**: `iam_database_authentication_enabled` is set to `false`, permitting traditional username/password credentials only.\n   - **Impact**: Database credentials cannot be centrally rotated via IAM; passwords are static and must be managed separately. This increases exposure to credential compromise and complicates audit trails.\n   - **Recommendation**: Set `iam_database_authentication_enabled` to `true` and migrate database users to IAM-authenticated roles. This enables credential rotation via temporary tokens and integrates with existing IAM audit logging.\n\n### Cost Impact\n\n💰 **Ongoing Cost**: AWS KMS key management and usage.\n   - **Resource**: `aws_kms_key.rds` (newly created)\n   - **Details**: AWS KMS keys incur monthly key management fees (~$1/month per key) plus per-request encryption/decryption costs.\n\n💰 **One-Time Cost**: RDS cluster replacement and data migration.\n   - **Impact**: Forced recreation of `aws_rds_cluster.prod` requires data export, downtime, re-import, and application failover. Depending on cluster size and replication lag, this may incur significant operational costs and SLA penalties.\n\n---\n\n## Unified Recommendations\n\n### Priority 1: CRITICAL — Prevent Destructive Replacement\n\n1. **Review subnet group modification rationale.**\n   - Determine why `db_subnet_group_name` is being changed. If this is a required infrastructure update, proceed to step 2 instead of in-place replacement.\n\n2. **Implement blue-green migration strategy.**\n   - Create a parallel RDS cluster in the target subnet group with identical configuration.\n   - Use AWS Database Migration Service (DMS) or native replication to sync data with minimal downtime.\n   - Perform application cutover during a maintenance window; retain source cluster for rollback.\n   - This approach preserves the original cluster for recovery and eliminates forced recreation risk.\n\n3. **Add explicit lifecycle management to Terraform (if in-place update is acceptable).**\n   - If subnet group changes are non-destructive in future versions, add a lifecycle block to prevent accidental recreation:\n     ```hcl\n     lifecycle {\n       ignore_changes = [db_subnet_group_name]\n     }\n     ```\n   - However, this is not a substitute for blue-green migration; use only if the change is deferred.\n\n4. **Obtain explicit production change approval.**\n   - Route this plan to a change advisory board (CAB) or production change committee for sign-off before Terraform apply.\n   - Document the downtime window, rollback procedures, and data validation steps.\n\n---\n\n### Priority 2: HIGH — Enable Customer-Managed Encryption\n\n1. **Ensure `kms_key_id` is populated with the newly created KMS key.**\n   - Verify that `aws_kms_key.rds` is created before the RDS cluster references it (use explicit `depends_on` in Terraform if needed).\n\n2. **Configure KMS key rotation.**\n   - Set key rotation policy to enabled (annual rotation is AWS default; consider quarterly for highly sensitive data).\n\n3. **Restrict KMS key access.**\n   - Update the KMS key policy to allow only:\n     - RDS service principal (`rds.amazonaws.com`)\n     - Database administrator IAM roles\n     - Exclude broad administrator access (`Principal: \"*\"`)\n\n4. **Test encryption with customer-managed keys in a non-production environment first.**\n   - Verify that backup/restore operations function correctly with customer-managed keys.\n\n---\n\n### Priority 3: HIGH — Enable IAM Database Authentication\n\n1. **Set `iam_database_authentication_enabled = true` in the RDS cluster resource.**\n\n2. **Create IAM database users corresponding to existing application roles.**\n   - Use AWS documentation on \"IAM DB Authentication\" to generate token-based credentials.\n   - Each application instance should assume an IAM role with a policy granting `rds-db:connect` permission.\n\n3. **Update application connection strings to use IAM tokens.**\n   - Replace hardcoded passwords with dynamic token generation at connection time.\n   - This typically requires a small application code change (most drivers support token-based auth natively).\n\n4. **Retire static password-based accounts after IAM migration is complete.**\n   - Reduce the attack surface by removing unnecessary master user credentials.\n\n5. **Enable Enhanced Monitoring and audit logging for database connections.**\n   - Configure CloudWatch Logs to log all connection attempts.\n\n---\n\n### Priority 4: MEDIUM — Cost Optimization\n\n1. **Evaluate KMS key consolidation.**\n   - If multiple RDS instances exist, consider sharing a single customer-managed KMS key (with appropriate key policies) to reduce per-key monthly fees.\n\n2. **Plan maintenance windows to minimize downtime costs.**\n   - Schedule blue-green migrations during periods of lowest traffic to reduce revenue impact.\n\n3. **Reserve capacity if cluster size will remain stable.**\n   - Consider RDS reserved instances for long-term cost savings (if applicable to cluster configuration).\n\n---\n\n## Verdict Summary\n\n### **ESCALATE**\n\n**Reasoning**: The Terraform plan contains a **CRITICAL destructive change** that will force the production RDS cluster to be destroyed and recreated. This action:\n\n- **Violates change control policy** for production infrastructure.\n- **Lacks a documented rollback procedure**.\n- **Has not been assessed for data consistency or compliance impact**.\n\n**Required Actions Before Approval**:\n\n1. ✋ **DO NOT apply this plan in its current form.**\n2. 📋 Obtain explicit approval from the database engineering team and production change committee.\n3. 🔄 Evaluate and document the blue-green migration strategy with projected downtime and cutover steps.\n4. 🔐 Confirm that customer-managed KMS key and IAM database authentication settings are finalized and tested in staging.\n5. ✅ Re-run the Terraform plan after addressing destructive change risk; a revised plan with blue-green architecture should receive a **REVISE** or **APPROVE** verdict.\n\n**Current Status**: **BLOCKED** pending escalation resolution. Infrastructure and security teams must review and approve before proceeding.\n\n---\n\n*Report generated by Stage 5 Multi-Workflow Coordinator System*\n",
+  "timestamp": "2026-10-26T12:24:26.378Z"
+}

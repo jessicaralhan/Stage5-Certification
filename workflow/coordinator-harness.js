@@ -52,7 +52,16 @@ async function callCoordinator(inputFile, inputContent, environment, correlation
     process.stdout.write(`  ✓ Decision: ${decision.decision} (confidence: ${decision.confidence})\n`);
     process.stdout.write(`  ✓ Reason: ${decision.reason}\n`);
 
-    return decision.decision;
+    // Return metrics for audit trail
+    return {
+      decision: decision.decision,
+      confidence: decision.confidence,
+      reason: decision.reason,
+      model: response.model,
+      inputTokens: response.inputTokens,
+      outputTokens: response.outputTokens,
+      cost: calculateCost(response.model, response.inputTokens, response.outputTokens),
+    };
   } catch (err) {
     throw new Error(`Coordinator failed to route: ${err.message}`);
   }
@@ -110,11 +119,28 @@ Examples:
 
     // Step 1: Call Coordinator Agent for routing decision
     const runId = `${Date.now()}`;
-    const workflowType = await callCoordinator(inputFile, inputContent, environment, runId);
+    const coordResult = await callCoordinator(inputFile, inputContent, environment, runId);
+    const workflowType = coordResult.decision;
 
     // Step 2: Execute the chosen workflow
     process.stdout.write(`\n[Step 2] Executing ${workflowType} workflow...\n`);
     const workflowResult = await executeWorkflow(workflowType, inputFile, environment, runId);
+
+    // Add coordinator routing to audit trail
+    if (workflowResult.audit_trail) {
+      workflowResult.audit_trail.coordinator_routing = {
+        decision: coordResult.decision,
+        confidence: coordResult.confidence,
+        reason: coordResult.reason,
+        model: coordResult.model,
+        input_tokens: coordResult.inputTokens,
+        output_tokens: coordResult.outputTokens,
+        total_tokens: coordResult.inputTokens + coordResult.outputTokens,
+        cost_usd: coordResult.cost,
+      };
+      workflowResult.audit_trail.total_tokens += coordResult.inputTokens + coordResult.outputTokens;
+      workflowResult.audit_trail.total_cost += coordResult.cost;
+    }
 
     process.stdout.write(`    ✓ Workflow complete. Risk level: ${workflowResult.risk_level}\n`);
 
