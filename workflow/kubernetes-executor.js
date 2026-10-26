@@ -246,6 +246,9 @@ async function runKubernetesWorkflow(manifestContent, environment, correlationId
         try {
           const jsonStr2 = extractJSON(agent2ReviseResponse.text);
           currentFixes = JSON.parse(jsonStr2);
+          if (!currentFixes.fixes || !Array.isArray(currentFixes.fixes)) {
+            throw new Error('Agent 2 revision output missing fixes array');
+          }
         } catch (err) {
           throw new Error(`Agent 2 revision output not valid JSON: ${err.message}`);
         }

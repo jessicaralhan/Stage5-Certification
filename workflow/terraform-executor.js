@@ -248,6 +248,9 @@ async function runTerraformWorkflow(planContent, environment, correlationId) {
         try {
           const jsonStr2 = extractJSON(agent2ReviseResponse.text);
           currentRemediations = JSON.parse(jsonStr2);
+          if (!currentRemediations.remediations || !Array.isArray(currentRemediations.remediations)) {
+            throw new Error('Agent 2 revision output missing remediations array');
+          }
         } catch (err) {
           throw new Error(`Agent 2 revision output not valid JSON: ${err.message}`);
         }
