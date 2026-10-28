@@ -97,6 +97,12 @@ function assembleReport(p) {
     md += 'No human checkpoint was triggered.\n\n';
   }
 
+  if (p.subAgentErrors && p.subAgentErrors.length) {
+    md += '## Sub-agent Errors\n\n';
+    md += `${p.subAgentErrors.length} dispatch(es) returned a structured error during this examination. These are shown so a failure is never mistaken for a finding.\n\n`;
+    md += table(['Tool', 'Error code'], p.subAgentErrors.map((e) => [e.tool, e.code]));
+  }
+
   md += '## Substance Assessment\n\n';
   md += table(['Workflow', 'Category', 'Rationale'], p.substance.assessments.map((a) => [a.id, a.category, a.rationale]));
   md += p.substance.elevate ? `Elevated for human review: ${p.substance.reasons.join('; ')}\n\n` : 'No elevation: no workflow is toy and fewer than two are peripheral.\n\n';

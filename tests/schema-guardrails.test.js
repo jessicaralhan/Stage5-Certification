@@ -99,3 +99,17 @@ test('a truncated model output is reported as OUTPUT_TRUNCATED', async () => {
   await runExamination({ inputFile: F.TF_PLAN, environment: 'production', client: base, resultsDir: dir });
   assert.match(coordinatorCalls(base)[1].messages.at(-1).content[0].content, /OUTPUT_TRUNCATED/);
 });
+
+test('a run that escalated because a sub-agent failed is distinguishable from one that escalated on the merits', async () => {
+  const dir = F.tmpDir();
+  const client = createScriptedClient({
+    coordinator: (results) => (results.length ? { final: { disposition: 'ESCALATE', rationale: 'analysis kept failing', workflows_reviewed: ['terraform'], unresolved_challenges: [] } } : { tool: 'launch_terraform_workflow', input: { step: 'analyze' } }),
+    analyzer: () => 'garbage',
+  });
+  const run = await runExamination({ inputFile: F.TF_PLAN, environment: 'production', client, resultsDir: dir });
+  assert.strictEqual(run.final_status, 'PENDING_HUMAN_DECISION');
+  assert.deepStrictEqual(run.sub_agent_errors.map((e) => e.code), ['INVALID_JSON']);
+  const report = fs.readFileSync(path.join(dir, run.correlation_id, 'report.md'), 'utf8');
+  assert.match(report, /## Sub-agent Errors/);
+  assert.match(report, /INVALID_JSON/);
+});

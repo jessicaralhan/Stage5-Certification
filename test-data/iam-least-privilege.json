@@ -1,0 +1,15 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ReadReportsOnly",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::reports-bucket/monthly/*",
+      "Condition": {
+        "Bool": { "aws:MultiFactorAuthPresent": "true" },
+        "IpAddress": { "aws:SourceIp": "10.20.0.0/16" }
+      }
+    }
+  ]
+}

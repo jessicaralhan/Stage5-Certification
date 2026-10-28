@@ -15,7 +15,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { liveClient } = require('./anthropic-client');
 const { resolveModel } = require('./config');
-const { AuditTrail, summarizeAudit } = require('./audit');
+const { AuditTrail, summarizeAudit, readAudit } = require('./audit');
 const { fillTemplate, parseModelJson } = require('./json-utils');
 const S = require('./schemas');
 const { evaluateHardGates, evaluateSubstance, computeFinalStatus } = require('./gates');
@@ -172,9 +172,15 @@ async function runExamination({
   audit.record('gate_result', { gates: gateResult.gates, requires_human_decision: finalStatus.requires_human_decision, final_status: finalStatus.final_status, coordinator_overridden: finalStatus.coordinator_overridden });
 
   const auditSummary = summarizeAudit(audit.file);
+  // Sub-agent failures are reported explicitly. A run that escalated because a
+  // sub-agent kept failing must never look the same as one that escalated on the merits.
+  const auditEvents = readAudit(audit.file);
+  const subAgentErrors = auditEvents
+    .filter((e) => (e.type === 'tool_result' && e.ok === false) || e.type === 'blocked_tool_call')
+    .map((e) => ({ seq: e.seq, tool: e.tool, code: e.error_code || 'TOOL_NOT_AVAILABLE' }));
   const { markdown, statuses, overall } = assembleReport({
     correlationId: cid, environment, inputName: ctx.inputName, state: ctx.state, gates: gateResult.gates,
-    finalReview: ctx.finalReview, disposition, finalStatus, substance, audit: auditSummary,
+    finalReview: ctx.finalReview, disposition, finalStatus, substance, audit: auditSummary, subAgentErrors,
   });
   fs.writeFileSync(path.join(dir, 'report.md'), markdown);
 
@@ -185,6 +191,7 @@ async function runExamination({
     input: { name: ctx.inputName, bytes: inputBuf.length, sha256: crypto.createHash('sha256').update(inputBuf).digest('hex') },
     environment,
     model: { requested: model, reported_by_api: auditSummary.models_reported_by_api },
+    sub_agent_errors: subAgentErrors,
     coordinator: { turns: ctx.turns, dispatches: ctx.dispatches, tools: manifest.coordinator.tools.map((t) => t.name), disposition, incomplete_reason: incompleteReason },
     workflows: ctx.state,
     workflow_status: statuses,

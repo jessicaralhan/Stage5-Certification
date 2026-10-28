@@ -1,22 +1,27 @@
 {
   "name": "stage5-certification",
   "version": "1.0.0",
-  "description": "Stage 5: Multi-Workflow Coordinator System",
-  "main": "workflow/orchestrator.js",
+  "description": "Stage 5: dispatch-only coordinator LLM governing three infrastructure-review workflows, an isolated adversarial reviewer and a final review writer",
+  "main": "workflow/coordinator-harness.js",
   "scripts": {
-    "test": "node workflow/integration-test.js",
-    "test:k8s": "promptfoo eval -c evals/workflow2-kubernetes.yaml",
-    "test:iam": "promptfoo eval -c evals/workflow3-iam.yaml",
-    "test:terraform": "promptfoo eval -c evals/workflow1-terraform.yaml"
+    "start": "node workflow/coordinator-harness.js",
+    "test": "node --test tests/*.test.js",
+    "eval": "node evals/run-evals.js",
+    "eval:terraform": "node evals/run-evals.js --only terraform",
+    "eval:kubernetes": "node evals/run-evals.js --only kubernetes",
+    "eval:iam": "node evals/run-evals.js --only iam",
+    "eval:reviewer": "node evals/run-evals.js --only adversarial_reviewer",
+    "eval:writer": "node evals/run-evals.js --only final_review_writer",
+    "decide": "node punch-out/human-decision-cli.js",
+    "export:gitlog": "git log --date=iso --format=\"%h %ad %an%n    %s%n\" > GIT-LOG.txt"
   },
   "keywords": [],
   "author": "jessica@rjliving.com.au",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.24.3",
     "dotenv": "^16.6.1"
   },
-  "devDependencies": {
-    "promptfoo": "^0.82.0"
+  "engines": {
+    "node": ">=20"
   }
 }
