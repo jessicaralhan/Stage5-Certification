@@ -48,7 +48,7 @@ Reply with a single valid JSON object and nothing else: no prose, no markdown co
       "claim": "<what is wrong>",
       "evidence_source": "file | reasoning",
       "evidence": "<if evidence_source is file: an exact quote of at most 200 characters copied from the source file; otherwise the reasoning>",
-      "requires_human_signoff": true
+      "requires_human_signoff": true | false
     }
   ],
   "verified_claims": ["<a claim from the artifact that you checked against the file and found true>"]
