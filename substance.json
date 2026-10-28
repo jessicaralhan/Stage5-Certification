@@ -1,0 +1,31 @@
+{
+  "assessed_for": "an IT consultant's real work",
+  "categories": {
+    "core": "work a paying client would buy",
+    "peripheral": "useful but not billable on its own",
+    "toy": "hobby, game or demo"
+  },
+  "elevation_rule": "If any workflow is scored toy, or two or more are peripheral, the system elevates for human review and blocks final disposition until a human records a Continue or Reject decision.",
+  "workflows": [
+    {
+      "id": "terraform_review",
+      "category": "core",
+      "rationale": "Pre-apply review of a Terraform plan for destructive changes, security exposure and cost impact is a recurring, billable cloud governance engagement (change-risk review before production applies)."
+    },
+    {
+      "id": "kubernetes_review",
+      "category": "core",
+      "rationale": "Security review of Kubernetes manifests (RBAC, network policy, pod security) is standard paid platform-security work."
+    },
+    {
+      "id": "iam_audit",
+      "category": "core",
+      "rationale": "Least-privilege IAM policy audit is a common billable security assessment deliverable."
+    },
+    {
+      "id": "final_review_writer",
+      "category": "peripheral",
+      "rationale": "Writing up the review is required for delivery but a client would not buy report synthesis on its own; it exists to package the three core workflows."
+    }
+  ]
+}

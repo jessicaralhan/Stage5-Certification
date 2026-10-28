@@ -1,0 +1,305 @@
+{
+  "system": "stage5-infrastructure-review-delegation",
+  "version": "2.0.0",
+  "description": "A dispatch-only coordinator LLM governs three workflow sub-agents, one cross-workflow adversarial reviewer, and a final review writer. The harness enforces structure; the coordinator makes the decisions.",
+  "runtime": {
+    "inference": "direct HTTPS calls to the Anthropic Messages API",
+    "client": "workflow/anthropic-client.js",
+    "agentic_cli_shells_used_at_runtime": false
+  },
+  "coordinator": {
+    "id": "coordinator",
+    "prompt": "prompts/coordinator-agent.md",
+    "holds_real_work_tools": false,
+    "tool_name_rule": "every coordinator tool name must start with launch_",
+    "sees_input_file_contents": false,
+    "sees": "input file name, extension, size in bytes, environment, and the validated JSON results that sub-agents return",
+    "limits": {
+      "max_turns": 24,
+      "max_dispatches": 16,
+      "max_remediation_revisions_per_workflow": 2
+    },
+    "tools": [
+      {
+        "name": "launch_terraform_workflow",
+        "dispatches_to": "terraform_workflow",
+        "description": "Dispatch the Terraform safety-review sub-agent for the input file. step=analyze examines the plan for destructive changes, security exposure and cost impact. step=remediate proposes concrete fixes for the analysis; pass `challenges` from the adversarial reviewer to re-invoke it targeting a specific challenged artifact.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "step": {
+              "type": "string",
+              "enum": [
+                "analyze",
+                "remediate"
+              ]
+            },
+            "challenges": {
+              "type": "array",
+              "description": "Reviewer challenges to address; re-invokes this step with them as added context. Use step=analyze when the reviewer challenged the analysis, step=remediate when it challenged the remediation.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "target": {
+                    "type": "string",
+                    "description": "resource or finding the challenge targets"
+                  },
+                  "claim": {
+                    "type": "string"
+                  },
+                  "artifact": {
+                    "type": "string",
+                    "enum": [
+                      "analysis",
+                      "remediation"
+                    ]
+                  }
+                },
+                "required": [
+                  "target",
+                  "claim"
+                ]
+              }
+            }
+          },
+          "required": [
+            "step"
+          ]
+        }
+      },
+      {
+        "name": "launch_kubernetes_workflow",
+        "dispatches_to": "kubernetes_workflow",
+        "description": "Dispatch the Kubernetes security-review sub-agent for the input file. step=analyze finds RBAC, network policy, security context, resource limit and pod security issues. step=remediate proposes concrete YAML fixes; pass `challenges` from the adversarial reviewer to re-invoke it targeting a specific challenged artifact.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "step": {
+              "type": "string",
+              "enum": [
+                "analyze",
+                "remediate"
+              ]
+            },
+            "challenges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "target": {
+                    "type": "string"
+                  },
+                  "claim": {
+                    "type": "string"
+                  },
+                  "artifact": {
+                    "type": "string",
+                    "enum": [
+                      "analysis",
+                      "remediation"
+                    ]
+                  }
+                },
+                "required": [
+                  "target",
+                  "claim"
+                ]
+              },
+              "description": "Reviewer challenges to address; re-invokes this step with them as added context. Use step=analyze when the reviewer challenged the analysis, step=remediate when it challenged the remediation."
+            }
+          },
+          "required": [
+            "step"
+          ]
+        }
+      },
+      {
+        "name": "launch_iam_workflow",
+        "dispatches_to": "iam_workflow",
+        "description": "Dispatch the IAM policy-audit sub-agent for the input file. step=analyze finds overly broad permissions and missing conditions. step=remediate proposes least-privilege policy changes; pass `challenges` from the adversarial reviewer to re-invoke it targeting a specific challenged artifact.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "step": {
+              "type": "string",
+              "enum": [
+                "analyze",
+                "remediate"
+              ]
+            },
+            "challenges": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "target": {
+                    "type": "string"
+                  },
+                  "claim": {
+                    "type": "string"
+                  },
+                  "artifact": {
+                    "type": "string",
+                    "enum": [
+                      "analysis",
+                      "remediation"
+                    ]
+                  }
+                },
+                "required": [
+                  "target",
+                  "claim"
+                ]
+              },
+              "description": "Reviewer challenges to address; re-invokes this step with them as added context. Use step=analyze when the reviewer challenged the analysis, step=remediate when it challenged the remediation."
+            }
+          },
+          "required": [
+            "step"
+          ]
+        }
+      },
+      {
+        "name": "launch_adversarial_reviewer",
+        "dispatches_to": "adversarial_reviewer",
+        "description": "Dispatch the adversarial reviewer, in its own fresh context, to challenge a workflow's outputs. It can read the source file to verify claims. Returns a verdict (APPROVE, REVISE or ESCALATE) and structured challenges.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "workflow": {
+              "type": "string",
+              "enum": [
+                "terraform",
+                "kubernetes",
+                "iam"
+              ]
+            }
+          },
+          "required": [
+            "workflow"
+          ]
+        }
+      },
+      {
+        "name": "launch_final_review_writer",
+        "dispatches_to": "final_review_writer",
+        "description": "Dispatch the final review writer to synthesize the examination into a polished report. Requires every executed workflow to have an adversarial review on record. `coordinator_notes` is your disposition context for the writer; it may not add new findings.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "coordinator_notes": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "coordinator_notes"
+          ]
+        }
+      }
+    ]
+  },
+  "sub_agents": [
+    {
+      "id": "terraform_workflow",
+      "workflow": "terraform",
+      "title": "Terraform Safety Review",
+      "substance_ref": "terraform_review",
+      "steps": [
+        "analyze",
+        "remediate"
+      ],
+      "prompts": {
+        "analyze": "prompts/workflow1-terraform-analyzer.md",
+        "remediate": "prompts/workflow1-terraform-generator.md"
+      },
+      "tools": [],
+      "scope": "Analyzes and remediates the single declared Terraform plan file. No tools, no network, no file access of its own; the harness hands it that one file's text.",
+      "eval_ref": "terraform",
+      "eval_results": "evals/results/terraform.results.json"
+    },
+    {
+      "id": "kubernetes_workflow",
+      "workflow": "kubernetes",
+      "title": "Kubernetes Security Review",
+      "substance_ref": "kubernetes_review",
+      "steps": [
+        "analyze",
+        "remediate"
+      ],
+      "prompts": {
+        "analyze": "prompts/workflow2-kubernetes-analyzer.md",
+        "remediate": "prompts/workflow2-kubernetes-generator.md"
+      },
+      "tools": [],
+      "scope": "Analyzes and remediates the single declared Kubernetes manifest file. No tools, no network, no file access of its own.",
+      "eval_ref": "kubernetes",
+      "eval_results": "evals/results/kubernetes.results.json"
+    },
+    {
+      "id": "iam_workflow",
+      "workflow": "iam",
+      "title": "IAM Policy Audit",
+      "substance_ref": "iam_audit",
+      "steps": [
+        "analyze",
+        "remediate"
+      ],
+      "prompts": {
+        "analyze": "prompts/workflow3-iam-analyzer.md",
+        "remediate": "prompts/workflow3-iam-generator.md"
+      },
+      "tools": [],
+      "scope": "Analyzes and remediates the single declared IAM policy file. No tools, no network, no file access of its own.",
+      "eval_ref": "iam",
+      "eval_results": "evals/results/iam.results.json"
+    },
+    {
+      "id": "adversarial_reviewer",
+      "title": "Adversarial Reviewer",
+      "covers": [
+        "terraform_workflow",
+        "kubernetes_workflow",
+        "iam_workflow"
+      ],
+      "scoping_note": "Scoped by review assignment, not by a single workflow. One reviewer covering several sub-agents is the required pattern.",
+      "prompt": "prompts/adversarial-reviewer.md",
+      "isolated_context": true,
+      "isolation_mechanism": "A fresh Messages API call with an empty message history on every review. It never receives the producing agent's messages or the coordinator's messages, only the artifact under review and the read_file tool.",
+      "tools": [
+        {
+          "name": "read_file",
+          "scope": "read-only; allow-listed to the single input file declared for this examination; size capped; no directory listing, no writes, no other paths",
+          "max_bytes": 200000
+        }
+      ],
+      "eval_ref": "adversarial_reviewer",
+      "eval_results": "evals/results/adversarial_reviewer.results.json"
+    },
+    {
+      "id": "final_review_writer",
+      "title": "Final Review Writer",
+      "substance_ref": "final_review_writer",
+      "prompt": "prompts/final-review-writer.md",
+      "tools": [],
+      "scope": "Receives the moderated context (workflow outputs, review verdicts and challenges, coordinator disposition) and writes prose only. Report headings and PASS/FAIL status are assembled deterministically by the harness. It may not add findings.",
+      "eval_ref": "final_review_writer",
+      "eval_results": "evals/results/final_review_writer.results.json"
+    }
+  ],
+  "guardrails": {
+    "schema_validation_before_coordinator_sees_output": "workflow/schemas.js",
+    "hard_gates": "workflow/gates.js",
+    "substance_assessment": "substance.json",
+    "human_decision_ledger": "punch-out/decisions.js (append-only)",
+    "audit_trail": "workflow/audit.js (results/<correlation_id>/audit.jsonl, appended per event)"
+  }
+}
