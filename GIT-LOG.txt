@@ -1,0 +1,96 @@
+ab1b7b7 2026-10-28 07:37:24 +0000 Jessica Ralhan
+    Test the live client against a fake fetch; show requires_human_signoff as true|false in the reviewer prompt
+
+736d67d 2026-10-28 07:35:58 +0000 Jessica Ralhan
+    Add Stage 3 evals for all five agents, report sub-agent errors, rewrite README
+
+958a768 2026-10-28 07:32:27 +0000 Jessica Ralhan
+    Add offline test suite (35 tests) for dispatch-only, isolation, guardrails, gates, audit
+
+e996e27 2026-10-28 07:32:27 +0000 Jessica Ralhan
+    Make the coordinator a tool-using LLM; add isolated adversarial reviewer with read_file
+
+a685b8a 2026-10-28 07:32:27 +0000 Jessica Ralhan
+    Add manifest, schema guardrails, hard gates, substance assessment, deterministic report
+
+a0fa6b8 2026-10-28 07:32:27 +0000 Jessica Ralhan
+    Add tool-use API client, central model/pricing config, persistent audit trail
+
+c2e65a2 2026-10-28 07:23:09 +0000 Jessica Ralhan
+    Archive pre-delegation evidence; remove dead Stage 4 code, phase notes and broken evals
+
+4a0adf6 2026-10-26 17:57:06 +0530 jessica-ralhan
+    Remove obsolete architecture documentation and clean up results directory
+
+1eb42c4 2026-10-26 17:15:01 +0530 jessica-ralhan
+    Fix critical architecture: invoke coordinator agent for routing decisions
+
+bf2050b 2026-10-26 16:55:22 +0530 jessica-ralhan
+    Update integration test results and add new IAM workflow output
+
+a21c1a4 2026-10-26 16:35:25 +0530 jessica-ralhan
+    Remove obsolete documentation files: API-GATEWAY-LIMITATION.md, CERTIFICATION_READY.md, CODE_QUALITY_FIXES.md, EVIDENCE_SUMMARY.md, FINAL_REVIEW_CHECKLIST.md, FIXES_APPLIED.md, ITERATION_LOG.md, PROJECT_SUMMARY.md, and CODE_QUALITY_FIXES.md. These files are no longer relevant to the current project state and have been replaced by updated documentation reflecting the latest architecture and fixes. This cleanup ensures a more streamlined and maintainable codebase.
+
+12adf0b 2026-10-26 16:32:31 +0530 jessica-ralhan
+    Clean up results directory: keep only latest test run (5/5 pass)
+
+bb9066e 2026-10-26 14:01:46 +0530 jessica-ralhan
+    Fix integration tests: correct terraform plan format and test expectations
+
+02d179e 2026-10-26 13:20:55 +0530 jessica-ralhan
+    Fix dispatch-only coordinator violation: isolate all file I/O
+
+150fae0 2026-10-26 13:09:37 +0530 jessica-ralhan
+    Fix 8 additional bugs: field defaults and API validation
+
+8c204bd 2026-10-26 13:03:31 +0530 jessica-ralhan
+    Fix 5 critical correctness bugs in model names and audit trail
+
+23f5ef2 2026-10-26 12:25:50 +0530 jessica-ralhan
+    Fix critical model name and field naming issues
+
+11346a8 2026-10-26 11:55:46 +0530 jessica-ralhan
+    Update integration test results to reflect all tests passing successfully
+
+583d82f 2026-10-26 11:47:00 +0530 jessica-ralhan
+    Add schema validation to Agent 2 revision outputs
+
+afc9c9c 2026-10-26 11:41:29 +0530 jessica-ralhan
+    Final cleanup: Remove test results and keep only latest validation run
+
+3008118 2026-10-26 11:39:58 +0530 jessica-ralhan
+    Add schema validation for agent outputs to prevent undefined propagation
+
+8f7798b 2026-10-26 11:21:17 +0530 jessica-ralhan
+    Update results with latest test run after bug fixes
+
+98af15b 2026-10-26 11:20:55 +0530 jessica-ralhan
+    CRITICAL FIX: Resolve 6 serious bugs found in code review
+
+b4b6075 2026-10-26 10:50:27 +0530 jessica-ralhan
+    Clean up results folder: keep only latest results from each workflow type
+
+73352d8 2026-10-26 10:37:00 +0530 jessica-ralhan
+    Refactor coordinator to enforce Stage 5 dispatch-only architecture
+
+6a985f8 2026-10-26 10:17:05 +0530 jessica-ralhan
+    Add documentation of code review fixes
+
+cfaf4e3 2026-10-26 10:15:57 +0530 jessica-ralhan
+    Fix code review findings: substance assessment, redundant operators, code duplication
+
+a9e6ce4 2026-10-23 19:49:57 +0530 jessica-ralhan
+    Clean up results folder: keep only latest results from each workflow type
+
+3422979 2026-10-23 19:43:43 +0530 jessica-ralhan
+    Implement comprehensive audit trail with per-step token/cost/correlation tracking
+
+4ebe2f4 2026-10-23 19:29:59 +0530 jessica-ralhan
+    Implement Stage 5 Certification Updates
+
+75b439e 2026-10-23 18:02:54 +0530 jessica-ralhan
+    Organize phase documentation into PHASES directory
+
+87234a2 2026-10-23 18:01:23 +0530 jessica-ralhan
+    Stage 5 Certification: Multi-Workflow Coordinator System
+
