@@ -1,304 +1,36 @@
 #!/usr/bin/env node
+// CLI entry point.
+//   node workflow/coordinator-harness.js <input_file> [production|non-production]
+//
+// The input file is handed to the coordinator only as a name, extension and
+// size. The coordinator dispatches sub-agents; it never reads the file.
 
-// Coordinator Harness: Multi-workflow orchestration engine
-// Invokes coordinator agent to analyze input and route to correct workflow
+try { require('dotenv').config(); } catch (e) { /* dotenv is optional; the key may already be in the environment */ }
 
-require('dotenv').config({ override: true });
+const { runExamination } = require('./coordinator');
 
-const fs = require('fs');
-const path = require('path');
-const { callClaude, calculateCost } = require('./anthropic-client');
-const { extractJSON } = require('./json-utils');
-const { generateReport } = require('./report-writer-executor');
-const { determineEscalation, assessSubstance } = require('./escalation-gates');
-const { writeResults } = require('./results-writer');
-
-// Workflow executor modules
-const WORKFLOWS = {
-  terraform: './terraform-executor.js',
-  kubernetes: './kubernetes-executor.js',
-  iam: './iam-executor.js',
-};
-
-function loadPrompt(name) {
-  return fs.readFileSync(path.join(__dirname, `../prompts/${name}`), 'utf-8');
-}
-
-// Coordinator Agent: Routes input to appropriate workflow
-async function callCoordinator(inputFile, inputContent, environment, correlationId) {
-  process.stdout.write('[Coordinator] Analyzing input to determine workflow type...\n');
-
-  const coordinatorPrompt = loadPrompt('coordinator-agent.md');
-  const coordinatorInput = coordinatorPrompt
-    .replace('{{input_file}}', inputFile)
-    .replace('{{environment}}', environment)
-    .replace('{{input_content}}', inputContent.substring(0, 1500));
-
-  const response = await callClaude({
-    user: coordinatorInput,
-    model: 'claude-haiku-4-5-20251001',
-    maxTokens: 500,
-  });
-
-  // Parse routing decision
-  try {
-    const jsonStr = extractJSON(response.text);
-    const decision = JSON.parse(jsonStr);
-
-    if (!decision.decision || !['terraform', 'kubernetes', 'iam'].includes(decision.decision)) {
-      throw new Error(`Invalid routing decision: ${decision.decision}`);
-    }
-
-    process.stdout.write(`  ✓ Decision: ${decision.decision} (confidence: ${decision.confidence})\n`);
-    process.stdout.write(`  ✓ Reason: ${decision.reason}\n`);
-
-    // Return metrics for audit trail
-    return {
-      decision: decision.decision,
-      confidence: decision.confidence,
-      reason: decision.reason,
-      model: response.model,
-      inputTokens: response.inputTokens,
-      outputTokens: response.outputTokens,
-      cost: calculateCost(response.model, response.inputTokens, response.outputTokens),
-    };
-  } catch (err) {
-    throw new Error(`Coordinator failed to route: ${err.message}`);
-  }
-}
-
-// Execute chosen workflow
-async function executeWorkflow(workflowType, inputFile, environment, correlationId) {
-  process.stdout.write(`\n[Orchestrator] Executing ${workflowType} workflow...\n`);
-
-  try {
-    const executor = require(path.join(__dirname, `${workflowType}-executor.js`));
-    if (!executor || typeof executor.run !== 'function') {
-      throw new Error(`Executor module does not export run function`);
-    }
-    const result = await executor.run(inputFile, environment, correlationId);
-    return result;
-  } catch (err) {
-    throw new Error(`Failed to execute ${workflowType} workflow: ${err.message}`);
-  }
-}
-
-// Main orchestration flow
 async function main() {
-  const args = process.argv.slice(2);
-
-  if (args.length < 1) {
-    process.stdout.write(`
-Usage: node coordinator-harness.js <input_file> [environment]
-
-The coordinator will analyze the input file and route it to the appropriate workflow.
-
-Examples:
-  node coordinator-harness.js config.tf production
-  node coordinator-harness.js manifest.yaml staging
-  node coordinator-harness.js policy.json production
-`);
+  const [inputFile, environment = 'non-production'] = process.argv.slice(2);
+  if (!inputFile) {
+    process.stdout.write('Usage: node workflow/coordinator-harness.js <input_file> [production|non-production]\n');
     process.exit(1);
   }
-
-  const inputFile = args[0];
-  const environment = args[1] || 'non-production';
-
-  process.stdout.write(`\n=== Stage 5 Coordinator: Multi-Workflow Orchestration ===\n`);
-  process.stdout.write(`Input: ${inputFile}\n`);
-  process.stdout.write(`Environment: ${environment}\n\n`);
-
-  try {
-    // Step 0: Read input file
-    let inputContent;
-    try {
-      inputContent = fs.readFileSync(inputFile, 'utf-8');
-    } catch (err) {
-      throw new Error(`Cannot read input file ${inputFile}: ${err.message}`);
-    }
-
-    // Step 1: Call Coordinator Agent for routing decision
-    const runId = `${Date.now()}`;
-    const coordResult = await callCoordinator(inputFile, inputContent, environment, runId);
-    const workflowType = coordResult.decision;
-
-    // Step 2: Execute the chosen workflow
-    process.stdout.write(`\n[Step 2] Executing ${workflowType} workflow...\n`);
-    const workflowResult = await executeWorkflow(workflowType, inputFile, environment, runId);
-
-    // Add coordinator routing to audit trail
-    if (workflowResult.audit_trail) {
-      workflowResult.audit_trail.coordinator_routing = {
-        decision: coordResult.decision,
-        confidence: coordResult.confidence,
-        reason: coordResult.reason,
-        model: coordResult.model,
-        input_tokens: coordResult.inputTokens,
-        output_tokens: coordResult.outputTokens,
-        total_tokens: coordResult.inputTokens + coordResult.outputTokens,
-        cost_usd: coordResult.cost,
-      };
-      workflowResult.audit_trail.total_tokens += coordResult.inputTokens + coordResult.outputTokens;
-      workflowResult.audit_trail.total_cost += coordResult.cost;
-    }
-
-    process.stdout.write(`    ✓ Workflow complete. Risk level: ${workflowResult.risk_level}\n`);
-
-    // Step 3: Check escalation gates
-    process.stdout.write(`\n[Step 3] Checking escalation gates...\n`);
-
-    const workflowFindings = {};
-    workflowFindings[workflowType] = workflowResult;
-
-    const substanceLevel = assessSubstance(workflowFindings, environment);
-    const escalationInfo = determineEscalation(workflowFindings, environment);
-
-    // Substance-based elevation:
-    // Per Stage 5 spec: "If any workflow is scored toy, or two or more are peripheral, the system elevates for human review"
-    // Note: In this single-workflow-per-run architecture, only the "toy" check applies.
-    // The "2+ peripheral" check would require a batch evaluation system that coordinates multiple
-    // concurrent workflows, which is outside the scope of this single-run coordinator.
-
-    if (substanceLevel === 'toy') {
-      escalationInfo.shouldEscalate = true;
-      escalationInfo.reasons.push(`Substance-based elevation: Workflow substance level is toy (no significant findings)`);
-    }
-
-    process.stdout.write(`    Substance level: ${substanceLevel}\n`);
-    process.stdout.write(`    Should escalate: ${escalationInfo.shouldEscalate ? 'YES' : 'NO'}\n`);
-
-    if (escalationInfo.reasons.length > 0) {
-      escalationInfo.reasons.forEach(reason => {
-        process.stdout.write(`      • ${reason}\n`);
-      });
-    }
-
-    // Step 4: Generate report (using Report Writer agent)
-    process.stdout.write(`\n[Step 4] Generating unified report...\n`);
-
-    let report;
-    try {
-      report = await generateReport(workflowFindings);
-    } catch (err) {
-      process.stdout.write(`    ! Report Writer failed, using fallback format\n`);
-      report = fallbackReportGeneration(workflowType, workflowResult);
-    }
-
-    // Step 5: Determine final status
-    process.stdout.write(`\n[Step 5] Determining final status...\n`);
-
-    let finalStatus = 'APPROVED';
-    if (escalationInfo.shouldEscalate) {
-      finalStatus = 'ESCALATED';
-      process.stdout.write(`    ! Findings require human review\n`);
-    } else {
-      process.stdout.write(`    ✓ Auto-approved (no escalation criteria met)\n`);
-    }
-
-    // Construct final output (caller is responsible for persisting)
-    const finalOutput = {
-      run_id: runId,
-      workflow_type: workflowType,
-      workflow_executed: workflowType,
-      environment: environment,
-      workflow_findings: workflowResult,
-      escalation_info: escalationInfo,
-      substance_level: substanceLevel,
-      final_status: finalStatus,
-      report: report,
-      timestamp: new Date().toISOString(),
-    };
-
-    process.stdout.write(`\n=== Orchestration Complete ===\n`);
-    process.stdout.write(`Status: ${finalStatus}\n`);
-    process.stdout.write(`Run ID: ${runId}\n`);
-
-    // Persist results to disk
-    try {
-      const writeStatus = await writeResults(finalOutput, runId);
-      process.stdout.write(`Results: ${writeStatus.resultsFile}\n`);
-      process.stdout.write(`Report: ${writeStatus.reportFile}\n`);
-    } catch (err) {
-      process.stderr.write(`Error: Failed to write results: ${err.message}\n`);
-      process.exit(1);
-    }
-
-    if (escalationInfo.shouldEscalate) {
-      process.stdout.write(`\nNext step: Review findings and make a decision\n`);
-      process.stdout.write(`Command: node punch-out/human-decision-cli.js approve ${runId}\n`);
-    }
-    process.stdout.write('\n');
-
-    return finalOutput;
-  } catch (err) {
-    process.stderr.write(`\nError: ${err.message}\n`);
-    process.exit(1);
+  const run = await runExamination({ inputFile, environment });
+  const out = (s) => process.stdout.write(s + '\n');
+  out(`\nCorrelation ID : ${run.correlation_id}`);
+  out(`Workflows      : ${Object.keys(run.workflow_status).map((w) => `${w}=${run.workflow_status[w]}`).join(', ') || 'none'}`);
+  out(`Final status   : ${run.final_status}`);
+  if (run.coordinator_overridden) out('Note           : coordinator APPROVE was overridden by a deterministic gate');
+  run.final_status_reasons.forEach((r) => out(`  - ${r}`));
+  out(`Model calls    : ${run.audit_summary.llm_calls}, ${run.audit_summary.total_tokens} tokens, $${run.audit_summary.total_cost_usd.toFixed(6)}`);
+  out(`Report         : ${run.files.report}`);
+  out(`Audit trail    : ${run.files.audit}`);
+  if (run.requires_human_decision) {
+    out(`\nHuman decision required:\n  node punch-out/human-decision-cli.js decide ${run.correlation_id} --decision continue|reject --reviewer "Your Name"`);
   }
 }
 
-// Generate basic report for fallback (Report Writer agent may fail)
-function fallbackReportGeneration(workflowType, findings) {
-  let report = '# Infrastructure & Security Review Report\n\n';
-
-  if (workflowType === 'terraform') {
-    report += '## Infrastructure (Terraform) Findings\n\n';
-    report += `Risk Level: **${findings.risk_level}**\n\n`;
-
-    if (findings.destructive_changes && findings.destructive_changes.length > 0) {
-      report += '### Destructive Changes\n';
-      findings.destructive_changes.forEach(change => {
-        report += `- **${change.resource}** (${change.severity}): ${change.action}\n`;
-      });
-      report += '\n';
-    }
-
-    if (findings.security_exposure && findings.security_exposure.length > 0) {
-      report += '### Security Exposure\n';
-      findings.security_exposure.forEach(issue => {
-        report += `- **${issue.resource}** (${issue.severity}): ${issue.issue}\n`;
-      });
-      report += '\n';
-    }
-  } else if (workflowType === 'kubernetes') {
-    report += '## Container Security (Kubernetes) Findings\n\n';
-    report += `Risk Level: **${findings.risk_level}**\n\n`;
-    if (findings.summary) {
-      report += `${findings.summary}\n\n`;
-    }
-
-    if (findings.security_issues && findings.security_issues.length > 0) {
-      report += '### Security Issues\n';
-      findings.security_issues.forEach(issue => {
-        report += `- **${issue.resource_name}** (${issue.severity}): ${issue.description}\n`;
-      });
-      report += '\n';
-    }
-  } else if (workflowType === 'iam') {
-    report += '## Access Control (IAM) Findings\n\n';
-    report += `Risk Level: **${findings.risk_level}**\n\n`;
-    if (findings.summary) {
-      report += `${findings.summary}\n\n`;
-    }
-
-    if (findings.access_issues && findings.access_issues.length > 0) {
-      report += '### Access Issues\n';
-      findings.access_issues.forEach(issue => {
-        report += `- **${issue.type}** (${issue.severity}): ${issue.description}\n`;
-      });
-      report += '\n';
-    }
-  }
-
-  report += '\n## Recommendations\n\nReview findings above and prioritize by severity (CRITICAL → LOW).\n';
-
-  return report;
-}
-
-if (require.main === module) {
-  main().catch(err => {
-    process.stderr.write(`Fatal error: ${err.message}\n`);
-    process.exit(1);
-  });
-}
-
-module.exports = { executeWorkflow };
+main().catch((e) => {
+  process.stderr.write(`Fatal: ${e.message}\n`);
+  process.exit(2);
+});

@@ -9,26 +9,21 @@ You are given structured findings from a prior review step:
 
 Environment: {{environment}}
 
+## Reviewer challenges to address
+
+{{challenges}}
+
+If challenges are listed above, a reviewer has already examined an earlier attempt. Address each challenge directly in the affected fix. If none are listed, this is the first pass.
+
 ## Task
 
-**CRITICAL: Return only the top 2-3 CRITICAL and HIGH severity issues to fit response within 4KB limit. OMIT all MEDIUM/LOW severity issues entirely.**
+Produce exactly one fix per entry in `security_issues`, in order. Do not skip findings of any severity and do not invent findings that were not in the input. Set each fix's `resource` to the finding's `resource_name`.
 
-For CRITICAL severity `security_issues` ONLY (ignore MEDIUM/LOW), propose a concrete remediation that hardens the configuration:
-
-**RBAC Issues (CRITICAL)**: Propose specific Role/ClusterRole definitions with minimal permissions, or restrict admin/edit bindings to service accounts.
-
-**Network Policy Issues (CRITICAL)**: Propose concrete NetworkPolicy with specific selectors, ports, allow/deny rules.
-
-**Security Context Issues (CRITICAL/HIGH)**: Propose exact `securityContext` settings (runAsNonRoot, readOnlyRootFilesystem, etc).
-
-**Pod Security Issues (CRITICAL)**: Propose pod-level fixes (hostNetwork: false, hostPID: false, etc).
-
-**Priority:**
-1. All CRITICAL issues (must include)
-2. HIGH issues (include if space available)
-3. MEDIUM/LOW (omit entirely)
-
-Return only the top 2-3 issues total, no explanations.
+- **RBAC**: propose specific Role/ClusterRole definitions with minimal verbs and resources, or restrict the binding.
+- **Network policy**: propose a concrete NetworkPolicy with specific selectors, ports and rules, and keep DNS working.
+- **Security context**: propose exact `securityContext` settings (`runAsNonRoot`, `readOnlyRootFilesystem`, `allowPrivilegeEscalation: false`, dropped capabilities).
+- **Pod security**: propose the pod-level fix (`hostNetwork: false`, `hostPID: false`, no `privileged`).
+- **Resource limits**: propose realistic requests and limits for the workload.
 
 ## Output format
 
@@ -38,22 +33,18 @@ You MUST output a single valid JSON object, and nothing else — no prose, no ma
 {
   "fixes": [
     {
-      "resource": "<resource name>",
+      "resource": "<resource name, exactly as in the finding>",
       "fix_type": "rbac | network_policy | security_context | resource_limits | pod_security",
-      "concrete_yaml": "<exact YAML change, compact>",
+      "concrete_yaml": "<exact YAML change>",
       "severity": "CRITICAL | HIGH | MEDIUM | LOW"
     }
   ]
 }
 ```
 
-**Keep output compact: no explanations, no why_it_works, minimal YAML.**
-
 ## Constraints
 
 - Do not use placeholder text like `[TODO]` or `[TBD]`.
-- Every fix must include concrete YAML or exact configuration values — never generic advice like "add security context" without specifics.
-- For RBAC, provide exact verbs/resources (e.g., `["get", "list"]` on `["pods"]` in specific namespaces, not `["*"]`).
-- For network policies, include specific selectors and ports, not just "restrict traffic."
-- For resource limits, propose realistic values (e.g., `100m` CPU, `128Mi` memory for small services) based on typical workload needs.
-- Produce exactly one fix entry per finding you were given (do not skip findings, do not invent findings that were not in the input).
+- Every fix must include concrete YAML or exact values, never generic advice like "add a security context".
+- For RBAC, give exact verbs and resources (for example `["get", "list"]` on `["pods"]` in a named namespace), never `["*"]`.
+- Exactly one fix per finding.

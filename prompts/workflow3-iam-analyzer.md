@@ -26,6 +26,12 @@ For every finding, assign a severity: `CRITICAL`, `HIGH`, `MEDIUM`, or `LOW`. A 
 
 **Report ALL issues found (no filtering).** Generator will select top 2-3 to fix.
 
+## Reviewer challenges to reconsider
+
+{{challenges}}
+
+If challenges are listed above, an adversarial reviewer examined an earlier analysis and disputed it. Re-examine the input with those challenges in mind: add what was missed, correct what was wrong, and keep what was right. If none are listed, this is the first pass.
+
 ## Output format
 
 You MUST output your findings as a single valid JSON object, and nothing else — no prose before or after it, no markdown code fences. Use exactly this schema:
