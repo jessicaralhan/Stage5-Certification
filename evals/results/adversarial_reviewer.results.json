@@ -1,0 +1,141 @@
+{
+  "eval_id": "adversarial_reviewer",
+  "agent": "adversarial_reviewer",
+  "title": "Adversarial Reviewer (own context, read_file)",
+  "prompts": [
+    "prompts/adversarial-reviewer.md"
+  ],
+  "run_at": "2026-11-03T09:44:08.045Z",
+  "model": {
+    "requested": "claude-haiku-4-5-20251001",
+    "reported_by_api": []
+  },
+  "cases": [
+    {
+      "id": "prevent-destroy-trap",
+      "description": "A fix that only blocks the destroy and so makes the required change impossible to apply",
+      "input": "test-data/terraform-destructive.tf",
+      "environment": "production",
+      "error": "Anthropic API error 401: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011Cgfn7qqmEvoDEXBVUBCbL\"}",
+      "criteria": [
+        {
+          "name": "schema-valid",
+          "pass": false,
+          "detail": "case failed to run: Anthropic API error 401: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011Cgfn7qqmEvoDEXBVUBCbL\"}"
+        },
+        {
+          "name": "does-not-approve-flawed-fix",
+          "pass": false,
+          "detail": "case failed to run: Anthropic API error 401: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011Cgfn7qqmEvoDEXBVUBCbL\"}"
+        },
+        {
+          "name": "catches-self-defeating-fix",
+          "pass": false,
+          "detail": "case failed to run: Anthropic API error 401: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011Cgfn7qqmEvoDEXBVUBCbL\"}"
+        },
+        {
+          "name": "verifies-against-source-file",
+          "pass": false,
+          "detail": "case failed to run: Anthropic API error 401: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011Cgfn7qqmEvoDEXBVUBCbL\"}"
+        },
+        {
+          "name": "file-quotes-are-genuine",
+          "pass": false,
+          "detail": "case failed to run: Anthropic API error 401: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011Cgfn7qqmEvoDEXBVUBCbL\"}"
+        },
+        {
+          "name": "escalates-prod-replacement",
+          "pass": false,
+          "detail": "case failed to run: Anthropic API error 401: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011Cgfn7qqmEvoDEXBVUBCbL\"}"
+        }
+      ]
+    },
+    {
+      "id": "analysis-missed-a-finding",
+      "description": "An analysis that reports nothing for a plan that replaces a production database",
+      "input": "test-data/terraform-destructive.tf",
+      "environment": "production",
+      "error": "Anthropic API error 401: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011Cgfn7sTVyVWARTjXkgerh\"}",
+      "criteria": [
+        {
+          "name": "schema-valid",
+          "pass": false,
+          "detail": "case failed to run: Anthropic API error 401: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011Cgfn7sTVyVWARTjXkgerh\"}"
+        },
+        {
+          "name": "catches-missed-finding",
+          "pass": false,
+          "detail": "case failed to run: Anthropic API error 401: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011Cgfn7sTVyVWARTjXkgerh\"}"
+        },
+        {
+          "name": "verifies-against-source-file",
+          "pass": false,
+          "detail": "case failed to run: Anthropic API error 401: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011Cgfn7sTVyVWARTjXkgerh\"}"
+        },
+        {
+          "name": "file-quotes-are-genuine",
+          "pass": false,
+          "detail": "case failed to run: Anthropic API error 401: {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"invalid x-api-key\"},\"request_id\":\"req_011Cgfn7sTVyVWARTjXkgerh\"}"
+        }
+      ]
+    }
+  ],
+  "criteria": [
+    {
+      "name": "schema-valid",
+      "passed": 0,
+      "total": 2,
+      "pass_rate": 0
+    },
+    {
+      "name": "does-not-approve-flawed-fix",
+      "passed": 0,
+      "total": 1,
+      "pass_rate": 0
+    },
+    {
+      "name": "catches-self-defeating-fix",
+      "passed": 0,
+      "total": 1,
+      "pass_rate": 0
+    },
+    {
+      "name": "verifies-against-source-file",
+      "passed": 0,
+      "total": 2,
+      "pass_rate": 0
+    },
+    {
+      "name": "file-quotes-are-genuine",
+      "passed": 0,
+      "total": 2,
+      "pass_rate": 0
+    },
+    {
+      "name": "escalates-prod-replacement",
+      "passed": 0,
+      "total": 1,
+      "pass_rate": 0
+    },
+    {
+      "name": "catches-missed-finding",
+      "passed": 0,
+      "total": 1,
+      "pass_rate": 0
+    }
+  ],
+  "named_criteria": 7,
+  "overall": {
+    "passed": 0,
+    "total": 10,
+    "pass_rate": 0
+  },
+  "usage": {
+    "llm_calls": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cost_usd": 0,
+    "pricing_verified": true
+  },
+  "audit_file": "evals/results/audit/adversarial_reviewer-2026-11-03T09-44-07-160Z/audit.jsonl"
+}

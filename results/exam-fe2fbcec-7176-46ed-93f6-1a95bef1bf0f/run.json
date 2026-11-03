@@ -1,0 +1,168 @@
+{
+  "correlation_id": "exam-fe2fbcec-7176-46ed-93f6-1a95bef1bf0f",
+  "started_at": "2026-11-03T09:45:56.490Z",
+  "finished_at": "2026-11-03T09:45:56.497Z",
+  "input": {
+    "name": "stage5-punchout-iam-1793699156489.json",
+    "bytes": 188,
+    "sha256": "c37e3765289fe26211a94bd00d3eca51aad1ba338ded1156bc6d994ad6f714a5"
+  },
+  "environment": "non-production",
+  "model": {
+    "requested": "claude-haiku-4-5-20251001",
+    "reported_by_api": [
+      "claude-haiku-4-5-20251001"
+    ]
+  },
+  "sub_agent_errors": [
+    {
+      "seq": 20,
+      "tool": "launch_final_review_writer",
+      "code": "SCHEMA_VALIDATION_FAILED"
+    }
+  ],
+  "coordinator": {
+    "turns": 4,
+    "dispatches": 3,
+    "tools": [
+      "launch_terraform_workflow",
+      "launch_kubernetes_workflow",
+      "launch_iam_workflow",
+      "launch_adversarial_reviewer",
+      "launch_final_review_writer"
+    ],
+    "disposition": {
+      "disposition": "APPROVE",
+      "rationale": "the policy is least-privilege with no findings",
+      "workflows_reviewed": [
+        "iam"
+      ],
+      "unresolved_challenges": []
+    },
+    "incomplete_reason": "the final review writer did not complete for the final state of the artifacts"
+  },
+  "workflows": {
+    "iam": {
+      "analysis": {
+        "artifact_id": "A1-iam-analysis",
+        "data": {
+          "access_issues": [],
+          "summary": "The policy grants only s3:GetObject on one bucket path.",
+          "risk_level": "LOW"
+        },
+        "json_bare": true,
+        "context_id": "iam_workflow-analyze-15478fe8",
+        "revision_challenges": 0
+      },
+      "remediation": null,
+      "reviews": [
+        {
+          "artifact_id": "A2-iam-review",
+          "data": {
+            "verdict": "APPROVE",
+            "reasoning": "Checked aws_rds_cluster.prod against the plan; verdict APPROVE.",
+            "challenges": [],
+            "verified_claims": [
+              "aws_rds_cluster.prod is marked must be replaced in the plan"
+            ]
+          },
+          "for": {
+            "analysis": "A1-iam-analysis",
+            "remediation": null
+          },
+          "context_id": "rev-fa31259e",
+          "isolated_context": true,
+          "file_reads": 1,
+          "evidence_check": {
+            "file_quotes": 0,
+            "verified": 0,
+            "unverified": [],
+            "detail": []
+          }
+        }
+      ]
+    }
+  },
+  "workflow_status": {
+    "iam": "PASS"
+  },
+  "overall_result": "PASS",
+  "gates": [],
+  "substance": {
+    "elevate": true,
+    "reasons": [
+      "workflow(s) scored toy: demo_easter_egg"
+    ],
+    "counts": {
+      "core": 1,
+      "peripheral": 0,
+      "toy": 1
+    },
+    "assessments": [
+      {
+        "id": "iam_audit",
+        "category": "core",
+        "rationale": "Least-privilege IAM policy audit is a common billable security assessment deliverable."
+      },
+      {
+        "id": "demo_easter_egg",
+        "category": "toy",
+        "rationale": "A hidden hobby feature with no business value, included here only to prove the substance gate elevates on a toy workflow."
+      }
+    ]
+  },
+  "requires_human_decision": true,
+  "final_status": "PENDING_HUMAN_DECISION",
+  "final_status_reasons": [
+    "[SUBSTANCE_ELEVATION] workflow(s) scored toy: demo_easter_egg",
+    "[INCOMPLETE_EXAMINATION] the final review writer did not complete for the final state of the artifacts"
+  ],
+  "coordinator_overridden": true,
+  "files": {
+    "run": "results/exam-fe2fbcec-7176-46ed-93f6-1a95bef1bf0f/run.json",
+    "report": "results/exam-fe2fbcec-7176-46ed-93f6-1a95bef1bf0f/report.md",
+    "audit": "results/exam-fe2fbcec-7176-46ed-93f6-1a95bef1bf0f/audit.jsonl"
+  },
+  "audit_summary": {
+    "correlation_id": "exam-fe2fbcec-7176-46ed-93f6-1a95bef1bf0f",
+    "events": 23,
+    "llm_calls": 8,
+    "total_input_tokens": 8000,
+    "total_output_tokens": 1760,
+    "total_tokens": 9760,
+    "total_cost_usd": 0.0168,
+    "pricing_verified": false,
+    "models_requested": [
+      "claude-haiku-4-5-20251001"
+    ],
+    "models_reported_by_api": [
+      "claude-haiku-4-5-20251001"
+    ],
+    "by_agent": {
+      "coordinator": {
+        "calls": 4,
+        "input_tokens": 4000,
+        "output_tokens": 360,
+        "cost_usd": 0.0058
+      },
+      "iam_workflow:iam": {
+        "calls": 1,
+        "input_tokens": 1000,
+        "output_tokens": 300,
+        "cost_usd": 0.0025
+      },
+      "adversarial_reviewer:iam": {
+        "calls": 2,
+        "input_tokens": 2000,
+        "output_tokens": 600,
+        "cost_usd": 0.005
+      },
+      "final_review_writer": {
+        "calls": 1,
+        "input_tokens": 1000,
+        "output_tokens": 500,
+        "cost_usd": 0.0035
+      }
+    }
+  }
+}

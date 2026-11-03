@@ -1,0 +1,139 @@
+{
+  "eval_id": "iam",
+  "agent": "iam_workflow",
+  "title": "IAM Policy Audit (analyzer + least-privilege generator)",
+  "prompts": [
+    "prompts/workflow3-iam-analyzer.md",
+    "prompts/workflow3-iam-generator.md"
+  ],
+  "run_at": "2026-10-28T08:49:20.197Z",
+  "model": {
+    "requested": "claude-haiku-4-5-20251001",
+    "reported_by_api": [
+      "claude-haiku-4-5-20251001"
+    ]
+  },
+  "cases": [
+    {
+      "id": "wildcard-action-and-resource",
+      "description": "Allow Action * on Resource *",
+      "input": "test-data/iam-overly-broad-policy.json",
+      "environment": "production",
+      "error": null,
+      "criteria": [
+        {
+          "name": "schema-valid",
+          "pass": true,
+          "detail": "analysis passed schema validation"
+        },
+        {
+          "name": "bare-json-output",
+          "pass": false,
+          "detail": "output was wrapped in prose or code fences"
+        },
+        {
+          "name": "one-concrete-fix-per-finding",
+          "pass": true,
+          "detail": "one fix per finding, none a placeholder"
+        },
+        {
+          "name": "detects-wildcard-permissions",
+          "pass": true,
+          "detail": "overly_broad_permissions found"
+        },
+        {
+          "name": "rates-critical",
+          "pass": true,
+          "detail": "rated CRITICAL"
+        },
+        {
+          "name": "fix-enumerates-actions",
+          "pass": true,
+          "detail": "fix names specific service:Action values"
+        }
+      ]
+    },
+    {
+      "id": "least-privilege-not-critical",
+      "description": "Single s3:GetObject on one prefix, with MFA and source-IP conditions",
+      "input": "test-data/iam-least-privilege.json",
+      "environment": "production",
+      "error": null,
+      "criteria": [
+        {
+          "name": "schema-valid",
+          "pass": true,
+          "detail": "analysis passed schema validation"
+        },
+        {
+          "name": "bare-json-output",
+          "pass": false,
+          "detail": "output was wrapped in prose or code fences"
+        },
+        {
+          "name": "no-false-critical",
+          "pass": true,
+          "detail": "not rated HIGH or CRITICAL"
+        }
+      ]
+    }
+  ],
+  "criteria": [
+    {
+      "name": "schema-valid",
+      "passed": 2,
+      "total": 2,
+      "pass_rate": 1
+    },
+    {
+      "name": "bare-json-output",
+      "passed": 0,
+      "total": 2,
+      "pass_rate": 0
+    },
+    {
+      "name": "one-concrete-fix-per-finding",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "detects-wildcard-permissions",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "rates-critical",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "fix-enumerates-actions",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "no-false-critical",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    }
+  ],
+  "named_criteria": 7,
+  "overall": {
+    "passed": 7,
+    "total": 9,
+    "pass_rate": 0.778
+  },
+  "usage": {
+    "llm_calls": 3,
+    "input_tokens": 2866,
+    "output_tokens": 3074,
+    "cost_usd": 0.018236,
+    "pricing_verified": false
+  },
+  "audit_file": "evals/results/audit/iam-2026-10-28T08-47-42-586Z/audit.jsonl"
+}

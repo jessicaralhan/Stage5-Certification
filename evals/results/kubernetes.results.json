@@ -1,0 +1,180 @@
+{
+  "eval_id": "kubernetes",
+  "agent": "kubernetes_workflow",
+  "title": "Kubernetes Security Review (analyzer + hardening generator)",
+  "prompts": [
+    "prompts/workflow2-kubernetes-analyzer.md",
+    "prompts/workflow2-kubernetes-generator.md"
+  ],
+  "run_at": "2026-10-28T08:48:39.695Z",
+  "model": {
+    "requested": "claude-haiku-4-5-20251001",
+    "reported_by_api": [
+      "claude-haiku-4-5-20251001"
+    ]
+  },
+  "cases": [
+    {
+      "id": "rbac-wildcard-binding",
+      "description": "ClusterRole with wildcard apiGroups/resources/verbs bound to a service account",
+      "input": "test-data/k8s-rbac-overly-permissive.yaml",
+      "environment": "production",
+      "error": null,
+      "criteria": [
+        {
+          "name": "schema-valid",
+          "pass": true,
+          "detail": "analysis passed schema validation"
+        },
+        {
+          "name": "bare-json-output",
+          "pass": false,
+          "detail": "output was wrapped in prose or code fences"
+        },
+        {
+          "name": "one-concrete-fix-per-finding",
+          "pass": true,
+          "detail": "one fix per finding, none a placeholder"
+        },
+        {
+          "name": "detects-rbac-wildcard",
+          "pass": true,
+          "detail": "HIGH/CRITICAL rbac finding"
+        },
+        {
+          "name": "names-the-role",
+          "pass": true,
+          "detail": "names the role or binding"
+        },
+        {
+          "name": "risk-elevated",
+          "pass": true,
+          "detail": "risk HIGH or CRITICAL"
+        }
+      ]
+    },
+    {
+      "id": "insecure-pod",
+      "description": "Privileged root pod with hostNetwork and hostPID",
+      "input": "test-data/k8s-insecure-pod.yaml",
+      "environment": "production",
+      "error": null,
+      "criteria": [
+        {
+          "name": "schema-valid",
+          "pass": true,
+          "detail": "analysis passed schema validation"
+        },
+        {
+          "name": "bare-json-output",
+          "pass": false,
+          "detail": "output was wrapped in prose or code fences"
+        },
+        {
+          "name": "detects-privileged-pod",
+          "pass": true,
+          "detail": "privileged/host namespace issue found"
+        },
+        {
+          "name": "detects-multiple-issue-types",
+          "pass": true,
+          "detail": "at least two distinct issue types"
+        }
+      ]
+    },
+    {
+      "id": "hardened-manifest-not-critical",
+      "description": "Namespaced least-privilege Role, default-deny-style NetworkPolicy, non-root read-only container",
+      "input": "test-data/k8s-benign.yaml",
+      "environment": "production",
+      "error": null,
+      "criteria": [
+        {
+          "name": "schema-valid",
+          "pass": true,
+          "detail": "analysis passed schema validation"
+        },
+        {
+          "name": "bare-json-output",
+          "pass": false,
+          "detail": "output was wrapped in prose or code fences"
+        },
+        {
+          "name": "no-false-critical",
+          "pass": true,
+          "detail": "no CRITICAL raised on a hardened manifest"
+        }
+      ]
+    }
+  ],
+  "criteria": [
+    {
+      "name": "schema-valid",
+      "passed": 3,
+      "total": 3,
+      "pass_rate": 1
+    },
+    {
+      "name": "bare-json-output",
+      "passed": 0,
+      "total": 3,
+      "pass_rate": 0
+    },
+    {
+      "name": "one-concrete-fix-per-finding",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "detects-rbac-wildcard",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "names-the-role",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "risk-elevated",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "detects-privileged-pod",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "detects-multiple-issue-types",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "no-false-critical",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    }
+  ],
+  "named_criteria": 9,
+  "overall": {
+    "passed": 10,
+    "total": 13,
+    "pass_rate": 0.769
+  },
+  "usage": {
+    "llm_calls": 4,
+    "input_tokens": 5020,
+    "output_tokens": 3698,
+    "cost_usd": 0.02351,
+    "pricing_verified": false
+  },
+  "audit_file": "evals/results/audit/kubernetes-2026-10-28T08-47-42-586Z/audit.jsonl"
+}

@@ -13,6 +13,7 @@
     "eval:reviewer": "node evals/run-evals.js --only adversarial_reviewer",
     "eval:writer": "node evals/run-evals.js --only final_review_writer",
     "decide": "node punch-out/human-decision-cli.js",
+    "punchout": "node evals/punchout/run-punchout-campaign.js",
     "export:gitlog": "git log --date=iso --format=\"%h %ad %an%n    %s%n\" > GIT-LOG.txt"
   },
   "keywords": [],

@@ -1,0 +1,207 @@
+{
+  "eval_id": "terraform",
+  "agent": "terraform_workflow",
+  "title": "Terraform Safety Review (analyzer + remediation generator)",
+  "prompts": [
+    "prompts/workflow1-terraform-analyzer.md",
+    "prompts/workflow1-terraform-generator.md"
+  ],
+  "run_at": "2026-10-28T08:48:06.194Z",
+  "model": {
+    "requested": "claude-haiku-4-5-20251001",
+    "reported_by_api": [
+      "claude-haiku-4-5-20251001"
+    ]
+  },
+  "cases": [
+    {
+      "id": "prod-destructive-replacement",
+      "description": "Production database replaced because db_subnet_group_name changed",
+      "input": "test-data/terraform-destructive.tf",
+      "environment": "production",
+      "error": null,
+      "criteria": [
+        {
+          "name": "schema-valid",
+          "pass": true,
+          "detail": "analysis passed schema validation"
+        },
+        {
+          "name": "bare-json-output",
+          "pass": false,
+          "detail": "output was wrapped in prose or code fences"
+        },
+        {
+          "name": "one-concrete-fix-per-finding",
+          "pass": true,
+          "detail": "one fix per finding, none a placeholder"
+        },
+        {
+          "name": "flags-prod-destroy",
+          "pass": true,
+          "detail": "aws_rds_cluster.prod flagged as a production destructive change"
+        },
+        {
+          "name": "rates-critical",
+          "pass": true,
+          "detail": "rated CRITICAL"
+        },
+        {
+          "name": "names-forcing-attribute",
+          "pass": true,
+          "detail": "named db_subnet_group_name"
+        }
+      ]
+    },
+    {
+      "id": "benign-plan-no-false-positives",
+      "description": "Creates a bucket with encryption and a private security group; nothing destructive and nothing public",
+      "input": "test-data/terraform-benign.tf",
+      "environment": "production",
+      "error": null,
+      "criteria": [
+        {
+          "name": "schema-valid",
+          "pass": true,
+          "detail": "analysis passed schema validation"
+        },
+        {
+          "name": "bare-json-output",
+          "pass": false,
+          "detail": "output was wrapped in prose or code fences"
+        },
+        {
+          "name": "no-false-destructive",
+          "pass": true,
+          "detail": "no destructive change invented"
+        },
+        {
+          "name": "no-false-public-exposure",
+          "pass": true,
+          "detail": "no public-exposure claim"
+        }
+      ]
+    },
+    {
+      "id": "open-cidr-ssh",
+      "description": "Bastion SSH opened to 0.0.0.0/0 in production",
+      "input": "test-data/terraform-open-cidr.tf",
+      "environment": "production",
+      "error": null,
+      "criteria": [
+        {
+          "name": "schema-valid",
+          "pass": true,
+          "detail": "analysis passed schema validation"
+        },
+        {
+          "name": "bare-json-output",
+          "pass": false,
+          "detail": "output was wrapped in prose or code fences"
+        },
+        {
+          "name": "one-concrete-fix-per-finding",
+          "pass": true,
+          "detail": "one fix per finding, none a placeholder"
+        },
+        {
+          "name": "flags-open-cidr",
+          "pass": true,
+          "detail": "bastion 0.0.0.0/0 flagged"
+        },
+        {
+          "name": "open-cidr-rated-high-or-critical",
+          "pass": true,
+          "detail": "rated HIGH or above"
+        },
+        {
+          "name": "fix-gives-value-or-command",
+          "pass": true,
+          "detail": "fix names a CIDR setting, command or data source"
+        }
+      ]
+    }
+  ],
+  "criteria": [
+    {
+      "name": "schema-valid",
+      "passed": 3,
+      "total": 3,
+      "pass_rate": 1
+    },
+    {
+      "name": "bare-json-output",
+      "passed": 0,
+      "total": 3,
+      "pass_rate": 0
+    },
+    {
+      "name": "one-concrete-fix-per-finding",
+      "passed": 2,
+      "total": 2,
+      "pass_rate": 1
+    },
+    {
+      "name": "flags-prod-destroy",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "rates-critical",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "names-forcing-attribute",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "no-false-destructive",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "no-false-public-exposure",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "flags-open-cidr",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "open-cidr-rated-high-or-critical",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "fix-gives-value-or-command",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    }
+  ],
+  "named_criteria": 11,
+  "overall": {
+    "passed": 13,
+    "total": 16,
+    "pass_rate": 0.813
+  },
+  "usage": {
+    "llm_calls": 5,
+    "input_tokens": 5653,
+    "output_tokens": 1547,
+    "cost_usd": 0.013388,
+    "pricing_verified": false
+  },
+  "audit_file": "evals/results/audit/terraform-2026-10-28T08-47-42-586Z/audit.jsonl"
+}

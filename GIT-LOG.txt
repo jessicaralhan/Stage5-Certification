@@ -1,3 +1,6 @@
+df22df3 2026-10-28 07:37:24 +0000 Jessica Ralhan
+    Export git log for review
+
 ab1b7b7 2026-10-28 07:37:24 +0000 Jessica Ralhan
     Test the live client against a fake fetch; show requires_human_signoff as true|false in the reviewer prompt
 

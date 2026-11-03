@@ -1,0 +1,198 @@
+schema_version: 2
+submission:
+  title: stage5-infrastructure-review-delegation
+  stage: 5
+
+coordinator:
+  entry_point: workflow/coordinator.js
+  prompt_file: prompts/coordinator-agent.md
+  dispatch: messages-api
+
+agents:
+  - name: coordinator
+    role: coordinator
+    workflows: [terraform, kubernetes, iam, final_review]
+    allowed_tools: [launch_terraform_workflow, launch_kubernetes_workflow, launch_iam_workflow, launch_adversarial_reviewer, launch_final_review_writer]
+    reviews: []
+    isolated_context: false
+  - name: terraform_workflow
+    role: subagent
+    workflows: [terraform]
+    allowed_tools: []
+    reviews: []
+    isolated_context: false
+  - name: kubernetes_workflow
+    role: subagent
+    workflows: [kubernetes]
+    allowed_tools: []
+    reviews: []
+    isolated_context: false
+  - name: iam_workflow
+    role: subagent
+    workflows: [iam]
+    allowed_tools: []
+    reviews: []
+    isolated_context: false
+  - name: adversarial_reviewer
+    role: adversarial
+    workflows: []
+    reviews: [terraform_workflow, kubernetes_workflow, iam_workflow]
+    allowed_tools: [read_file]
+    isolated_context: true
+  - name: final_review_writer
+    role: subagent
+    workflows: [final_review]
+    allowed_tools: []
+    reviews: []
+    isolated_context: false
+
+workflows:
+  - name: terraform
+    sub_agent_entry_point: workflow/subagents.js
+    steps:
+      - name: analyze
+        prompt_file: prompts/workflow1-terraform-analyzer.md
+        eval_files: [evals/definitions.js, evals/results/terraform.results.json]
+        log_files: [evals/results/SUMMARY.md]
+      - name: remediate
+        prompt_file: prompts/workflow1-terraform-generator.md
+        eval_files: [evals/definitions.js, evals/results/terraform.results.json]
+        log_files: [evals/results/SUMMARY.md]
+    artifacts:
+      log: evals/results/SUMMARY.md
+      success_rate: evals/results/terraform.results.json
+
+  - name: kubernetes
+    sub_agent_entry_point: workflow/subagents.js
+    steps:
+      - name: analyze
+        prompt_file: prompts/workflow2-kubernetes-analyzer.md
+        eval_files: [evals/definitions.js, evals/results/kubernetes.results.json]
+        log_files: [evals/results/SUMMARY.md]
+      - name: remediate
+        prompt_file: prompts/workflow2-kubernetes-generator.md
+        eval_files: [evals/definitions.js, evals/results/kubernetes.results.json]
+        log_files: [evals/results/SUMMARY.md]
+    artifacts:
+      log: evals/results/SUMMARY.md
+      success_rate: evals/results/kubernetes.results.json
+
+  - name: iam
+    sub_agent_entry_point: workflow/subagents.js
+    steps:
+      - name: analyze
+        prompt_file: prompts/workflow3-iam-analyzer.md
+        eval_files: [evals/definitions.js, evals/results/iam.results.json]
+        log_files: [evals/results/SUMMARY.md]
+      - name: remediate
+        prompt_file: prompts/workflow3-iam-generator.md
+        eval_files: [evals/definitions.js, evals/results/iam.results.json]
+        log_files: [evals/results/SUMMARY.md]
+    artifacts:
+      log: evals/results/SUMMARY.md
+      success_rate: evals/results/iam.results.json
+
+  - name: final_review
+    sub_agent_entry_point: workflow/subagents.js
+    steps:
+      - name: write
+        prompt_file: prompts/final-review-writer.md
+        eval_files: [evals/definitions.js, evals/results/final_review_writer.results.json]
+        log_files: [evals/results/SUMMARY.md]
+    artifacts:
+      log: evals/results/SUMMARY.md
+      success_rate: evals/results/final_review_writer.results.json
+
+punch_outs:
+  - name: owner-gate
+    evidence:
+      - evals/punchout/results/2026-11-03T09-45-56-497Z-punchout.json
+      - results/exam-55dcc928-d488-4066-b7ff-5598081aa442/run.json
+      - results/exam-55dcc928-d488-4066-b7ff-5598081aa442/report.md
+      - results/exam-55dcc928-d488-4066-b7ff-5598081aa442/audit.jsonl
+      - results/exam-55dcc928-d488-4066-b7ff-5598081aa442/decisions.jsonl
+      - tests/human-gate.test.js
+  - name: substance-gate
+    evidence:
+      - evals/punchout/results/2026-11-03T09-45-56-497Z-punchout.json
+      - results/exam-fe2fbcec-7176-46ed-93f6-1a95bef1bf0f/run.json
+      - results/exam-fe2fbcec-7176-46ed-93f6-1a95bef1bf0f/report.md
+      - results/exam-fe2fbcec-7176-46ed-93f6-1a95bef1bf0f/audit.jsonl
+      - tests/substance.test.js
+
+adversarial_review:
+  reviewer_agent: adversarial_reviewer
+  evidence:
+    - prompts/adversarial-reviewer.md
+    - evals/results/adversarial_reviewer.results.json
+    - tests/reviewer-isolation.test.js
+
+version_control:
+  evidence:
+    - GIT-LOG.txt
+
+not_judged:
+  - path: archive/
+    reason: evidence from the superseded pre-delegation architecture, kept for history and explained in archive/pre-delegation-architecture/README.md
+  - path: test-data/
+    reason: eval and manual-run input fixtures, not themselves judged artifacts
+  - path: tests/helpers/
+    reason: shared scripted-client and fixture helpers used by tests and the punch-out campaign; infrastructure, not evidence
+  - path: tests/audit.test.js
+    reason: offline guarantee test not individually cited; covered collectively by workflow/audit.js's audit-trail guardrail
+  - path: tests/client.test.js
+    reason: offline guarantee test for the live-client/no-CLI-runtime boundary, covered collectively with tests/no-cli-runtime.test.js
+  - path: tests/dispatch-only.test.js
+    reason: offline guarantee test for the dispatch-only coordinator boundary; the coordinator's tool surface is evidenced directly via agents.yaml and workflow/coordinator.js
+  - path: tests/evals.test.js
+    reason: offline guarantee test proving each eval criterion fails on bad output; the measured results themselves are the cited evidence (evals/results/*.results.json)
+  - path: tests/governance.test.js
+    reason: offline guarantee test for coordinator re-invocation and the final-review precondition; covered collectively by the workflow and adversarial_review evidence above
+  - path: tests/no-cli-runtime.test.js
+    reason: offline guarantee test that no runtime path shells out to an agentic CLI; corroborated by workflow/anthropic-client.js being the only network path
+  - path: tests/schema-guardrails.test.js
+    reason: offline guarantee test for schema validation ahead of the coordinator; the guardrail itself is workflow/schemas.js
+  - path: evals/results/audit/
+    reason: raw per-call audit logs underlying the committed evals/results/*.results.json and SUMMARY.md; not referenced individually
+  - path: evals/run-evals.js
+    reason: eval harness implementation that produces evals/results/*.results.json; infrastructure, not itself evidence
+  - path: evals/README.md
+    reason: documentation describing the eval methodology and criteria table; not itself evidence
+  - path: evals/punchout/run-punchout-campaign.js
+    reason: deterministic harness script that produced the punch-out evidence JSON; infrastructure, not itself evidence
+  - path: workflow/anthropic-client.js
+    reason: "shared Messages API client used by the coordinator and every sub-agent; referenced conceptually via coordinator.dispatch = messages-api, not itself a per-workflow artifact"
+  - path: workflow/audit.js
+    reason: shared audit-trail implementation underlying every results/<correlation_id>/audit.jsonl; infrastructure, not itself per-workflow evidence
+  - path: workflow/config.js
+    reason: shared model/pricing configuration used by every workflow; infrastructure
+  - path: workflow/coordinator-harness.js
+    reason: CLI entry point that wraps workflow/coordinator.js for manual runs; the coordinator itself is declared at coordinator.entry_point
+  - path: workflow/gates.js
+    reason: shared deterministic hard-gate and substance-gate implementation exercised by both punch-outs; not a per-workflow artifact
+  - path: workflow/json-utils.js
+    reason: shared JSON parsing/templating helper used by every agent; infrastructure
+  - path: workflow/report.js
+    reason: shared deterministic report-assembly implementation; the reports it produces are cited directly under punch_outs and results/
+  - path: workflow/schemas.js
+    reason: shared schema-validation guardrail used by every sub-agent output; infrastructure
+  - path: punch-out/decisions.js
+    reason: shared append-only decision-ledger implementation underlying results/<correlation_id>/decisions.jsonl; infrastructure
+  - path: punch-out/human-decision-cli.js
+    reason: CLI wrapper over punch-out/decisions.js for a human reviewer to record a decision; infrastructure, not itself evidence
+  - path: agents.manifest.json
+    reason: legacy manifest, absorbed into this manifest's agents and coordinator sections
+  - path: substance.json
+    reason: the declared substance assessment; its content and effect are evidenced via the substance-gate punch-out run and tests/substance.test.js
+  - path: package.json
+    reason: npm project configuration and scripts
+  - path: package-lock.json
+    reason: npm dependency lockfile
+  - path: README.md
+    reason: project documentation, not itself evidence
+  - path: .env.example
+    reason: credential template with no secret values
+  - path: .gitignore
+    reason: repository configuration noise
+  - path: .env
+    reason: "contains live API credentials (ANTHROPIC_API_KEY) — gitignored and MUST NEVER be included in the submission zip; delete it from the zip's staging directory before archiving"

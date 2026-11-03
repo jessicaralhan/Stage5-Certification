@@ -1,0 +1,86 @@
+{
+  "eval_id": "final_review_writer",
+  "agent": "final_review_writer",
+  "title": "Final Review Writer (prose only)",
+  "prompts": [
+    "prompts/final-review-writer.md"
+  ],
+  "run_at": "2026-10-28T08:49:50.417Z",
+  "model": {
+    "requested": "claude-haiku-4-5-20251001",
+    "reported_by_api": [
+      "claude-haiku-4-5-20251001"
+    ]
+  },
+  "cases": [
+    {
+      "id": "escalated-production-replacement",
+      "description": "Synthesize a failing, escalated examination without softening it or adding findings",
+      "input": "test-data/terraform-destructive.tf",
+      "environment": "production",
+      "error": null,
+      "criteria": [
+        {
+          "name": "sections-complete",
+          "pass": true,
+          "detail": "executive summary and a section for every executed workflow"
+        },
+        {
+          "name": "no-new-findings",
+          "pass": true,
+          "detail": "every backticked identifier and severity word exists in the moderated context"
+        },
+        {
+          "name": "writes-no-headings",
+          "pass": true,
+          "detail": "no markdown headings in the LLM prose"
+        },
+        {
+          "name": "does-not-soften-failure",
+          "pass": true,
+          "detail": "prose does not claim approval for an ESCALATE result"
+        }
+      ]
+    }
+  ],
+  "criteria": [
+    {
+      "name": "sections-complete",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "no-new-findings",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "writes-no-headings",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    },
+    {
+      "name": "does-not-soften-failure",
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 1
+    }
+  ],
+  "named_criteria": 4,
+  "overall": {
+    "passed": 4,
+    "total": 4,
+    "pass_rate": 1
+  },
+  "usage": {
+    "llm_calls": 1,
+    "input_tokens": 961,
+    "output_tokens": 388,
+    "cost_usd": 0.002901,
+    "pricing_verified": false
+  },
+  "audit_file": "evals/results/audit/final_review_writer-2026-10-28T08-47-42-586Z/audit.jsonl"
+}
